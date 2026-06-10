@@ -7,7 +7,6 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/comum.css">
     <link rel="stylesheet" href="../assets/css/detalhe-servico.css">
@@ -17,143 +16,120 @@
     <header></header>
 
     <main class="service-page" aria-live="polite">
-        <section class="service-hero">
-            <div class="container service-hero-inner">
+        <section class="detail-hero">
+            <div class="container detail-container">
                 <nav class="breadcrumb" aria-label="Navegação">
-                    <a href="index.html">Home</a>
+                    <a href="index.html">Início</a>
                     <i class="fas fa-chevron-right" aria-hidden="true"></i>
                     <a href="todos-servicos.html">Serviços</a>
                     <i class="fas fa-chevron-right" aria-hidden="true"></i>
                     <span class="service-category-badge">Carregando...</span>
                 </nav>
 
-                <div class="hero-grid">
-                    <div class="hero-copy">
-                        <span class="eyebrow"><i class="fas fa-bolt"></i> Serviço Freelancer</span>
-                        <h1 class="service-title skeleton-line">Carregando serviço...</h1>
-                        <p class="service-summary">Confira as informações do serviço, dados do freelancer e opções disponíveis antes de continuar.</p>
+                <div class="detail-heading">
+                    <div class="heading-copy">
+                        <span class="eyebrow"><i class="fas fa-briefcase" aria-hidden="true"></i> Detalhes do serviço</span>
+                        <h1 class="service-title">Carregando serviço...</h1>
+                        <p class="service-summary">Carregando informações principais do serviço.</p>
+                    </div>
+                    <a class="back-link" href="todos-servicos.html">
+                        <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                        Ver outros serviços
+                    </a>
+                </div>
 
-                        <div class="service-gallery hero-gallery card-surface">
-                            <img src="../assets/img/servicos/servico_padrao.svg" alt="Imagem do serviço" class="service-main-image">
+                <div class="detail-showcase">
+                    <div class="detail-left-column">
+                        <section class="service-media card-surface" aria-label="Imagem do serviço">
+                            <img src="../assets/img/servicos/servico_padrao.svg" alt="Imagem do serviço" class="service-main-image" loading="eager">
+                        </section>
+
+                        <div class="service-info-grid" aria-label="Resumo do serviço">
+                            <div class="info-pill">
+                                <i class="fas fa-layer-group" aria-hidden="true"></i>
+                                <div>
+                                    <span>Categoria</span>
+                                    <strong class="info-category">--</strong>
+                                </div>
+                            </div>
+                            <div class="info-pill">
+                                <i class="fas fa-calendar-plus" aria-hidden="true"></i>
+                                <div>
+                                    <span>Publicado em</span>
+                                    <strong class="info-created">--</strong>
+                                </div>
+                            </div>
+                            <div class="info-pill">
+                                <i class="fas fa-user-check" aria-hidden="true"></i>
+                                <div>
+                                    <span>Freelancer</span>
+                                    <strong class="info-seller">--</strong>
+                                </div>
+                            </div>
                         </div>
+
+                        <article class="service-description-section card-surface">
+                            <div class="section-heading">
+                                <span class="section-kicker">Descrição</span>
+                                <h2>O que está incluído</h2>
+                            </div>
+                            <p class="service-description">Carregando descrição...</p>
+                        </article>
+
+                        <article class="service-extra-section card-surface" hidden>
+                            <div class="section-heading">
+                                <span class="section-kicker">Detalhes</span>
+                                <h2>Informações adicionais</h2>
+                            </div>
+                            <p class="service-extra"></p>
+                        </article>
                     </div>
 
-                    <aside class="action-card action-card-hero">
+                    <aside class="action-card action-card-hero" aria-label="Ações do serviço">
                         <div class="action-seller-card">
                             <img src="../assets/img/perfis/perfil_padrao.svg" alt="Foto do freelancer" class="freelancer-avatar-small">
                             <div class="freelancer-meta">
                                 <span class="freelancer-name">Carregando freelancer...</span>
                                 <span class="freelancer-subtitle">Profissional da Workly</span>
-                                <span class="freelancer-rating"><i class="fas fa-star"></i> Novo na plataforma</span>
+                                <span class="freelancer-rating"><i class="fas fa-star" aria-hidden="true"></i> Sem avaliações ainda</span>
                             </div>
                         </div>
 
-                        <span class="price-label">A partir de</span>
-                        <strong class="service-price">R$ 0,00</strong>
-                        <p class="price-helper">Valor informado pelo freelancer para este serviço.</p>
+                        <div class="price-box">
+                            <span class="price-label">Valor do serviço</span>
+                            <strong class="service-price">R$ 0,00</strong>
+                            <p class="price-helper">Confirme o escopo antes de finalizar a contratação.</p>
+                        </div>
 
                         <div class="action-buttons">
                             <button class="btn btn-primary btn-purchase" type="button">
-                                <i class="fas fa-shopping-cart"></i>
+                                <i class="fas fa-shopping-cart" aria-hidden="true"></i>
                                 Continuar contratação
                             </button>
-                            <button class="btn btn-secondary btn-contact" type="button">
-                                <i class="fas fa-comment-dots"></i>
-                                Falar com o vendedor
-                            </button>
                             <button class="btn-favorite" type="button">
-                                <i class="far fa-heart"></i>
+                                <i class="far fa-heart" aria-hidden="true"></i>
                                 <span>Salvar nos favoritos</span>
+                            </button>
+                            <button class="btn-copy-link" type="button">
+                                <i class="fas fa-link" aria-hidden="true"></i>
+                                Copiar link
                             </button>
                         </div>
 
-                        <div class="trust-list">
-                            <div class="trust-item"><i class="fas fa-shield-alt"></i><span>Contratação segura pela plataforma</span></div>
-                            <div class="trust-item"><i class="fas fa-clock"></i><span>Prazo combinado com o freelancer</span></div>
-                            <div class="trust-item"><i class="fas fa-rotate"></i><span>Revisões alinhadas antes do início</span></div>
+                        <div class="trust-list" aria-label="Informações de contratação">
+                            <div class="trust-item">
+                                <i class="fas fa-shield-alt" aria-hidden="true"></i>
+                                <span>Use a página de contratação para registrar o pedido.</span>
+                            </div>
+                            <div class="trust-item">
+                                <i class="fas fa-comments" aria-hidden="true"></i>
+                                <span>Combine prazo, escopo e revisões antes do início.</span>
+                            </div>
                         </div>
 
                         <div id="edit-button-container"></div>
                     </aside>
                 </div>
-            </div>
-        </section>
-
-        <section class="container service-content-wrap">
-            <div class="service-layout">
-                <div class="service-main">
-                    <div class="service-info-grid">
-                        <div class="info-pill">
-                            <i class="fas fa-layer-group"></i>
-                            <div><span>Categoria</span><strong class="info-category">--</strong></div>
-                        </div>
-                        <div class="info-pill">
-                            <i class="fas fa-calendar-plus"></i>
-                            <div><span>Publicado em</span><strong class="info-created">--</strong></div>
-                        </div>
-                        <div class="info-pill">
-                            <i class="fas fa-user-check"></i>
-                            <div><span>Vendedor</span><strong class="info-seller">--</strong></div>
-                        </div>
-                    </div>
-
-                    <article class="service-description-section card-surface">
-                        <div class="section-heading">
-                            <span></span>
-                            <h2>Sobre este serviço</h2>
-                        </div>
-                        <p class="service-description">Carregando descrição...</p>
-                    </article>
-
-                    <article class="service-extra-section card-surface" hidden>
-                        <div class="section-heading">
-                            <span></span>
-                            <h2>Informações adicionais</h2>
-                        </div>
-                        <p class="service-extra"></p>
-                    </article>
-
-                    <article class="next-steps-section card-surface">
-                        <div class="section-heading">
-                            <span></span>
-                            <h2>Como continuar</h2>
-                        </div>
-                        <div class="steps-grid">
-                            <div class="step-card"><strong>1</strong><h3>Converse</h3><p>Combine escopo, prazo e detalhes antes de iniciar.</p></div>
-                            <div class="step-card"><strong>2</strong><h3>Alinhe</h3><p>Confirme preço, entregáveis e revisões esperadas.</p></div>
-                            <div class="step-card"><strong>3</strong><h3>Contrate</h3><p>A etapa de pagamento/contratação será conectada futuramente.</p></div>
-                        </div>
-                    </article>
-                </div>
-
-                <aside class="service-sidebar">
-                    <div class="seller-card card-surface">
-                        <div class="seller-header">
-                            <img src="../assets/img/perfis/perfil_padrao.svg" alt="Foto do freelancer" class="seller-avatar">
-                            <div>
-                                <h2 class="seller-name">Carregando...</h2>
-                                <p class="seller-role">Freelancer Workly</p>
-                            </div>
-                        </div>
-                        <div class="seller-stats">
-                            <div><strong class="seller-rating">--</strong><span>Avaliação do serviço</span></div>
-                            <div><strong class="seller-category">--</strong><span>Categoria</span></div>
-                        </div>
-                        <button class="btn btn-secondary btn-contact-secondary" type="button">
-                            <i class="fas fa-envelope"></i>
-                            Enviar mensagem
-                        </button>
-                    </div>
-
-                    <div class="share-card card-surface">
-                        <h2>Compartilhar</h2>
-                        <p>Copie o link para acessar ou enviar este serviço depois.</p>
-                        <button class="btn-copy-link" type="button">
-                            <i class="fas fa-link"></i>
-                            Copiar link
-                        </button>
-                    </div>
-                </aside>
             </div>
         </section>
     </main>

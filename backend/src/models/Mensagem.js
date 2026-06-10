@@ -14,5 +14,6 @@ const mensagemSchema = new mongoose.Schema({
 mensagemSchema.index({ contrato: 1, createdAt: 1 });
 // índice para contar não-lidas por destinatário dentro de um contrato.
 mensagemSchema.index({ contrato: 1, remetente: 1, lida: 1 });
+mensagemSchema.index({ lida: 1, remetente: 1, contrato: 1 });
 
 module.exports = mongoose.model('Mensagem', mensagemSchema, 'mensagens');

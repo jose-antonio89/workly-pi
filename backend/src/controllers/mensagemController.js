@@ -1,4 +1,5 @@
 
+const mongoose = require('mongoose');
 const Mensagem = require('../models/Mensagem');
 const Contrato = require('../models/Contrato');
 const Notificacao = require('../models/Notificacao');
@@ -9,14 +10,20 @@ function usuarioId(req) {
   return req.user.id_usuario || req.user.idUsuario;
 }
 
+function toObjectId(value) {
+  return new mongoose.Types.ObjectId(String(value));
+}
+
 // verifica se o usuário é parte do contrato e retorna os ids das duas partes.
 // só deixa ler/enviar mensagem se o usuário fizer parte do contrato.
 // sem isso qualquer pessoa poderia tentar abrir conversa pelo id.
 async function carregarContratoDoUsuario(contratoId, userId) {
   const contrato = await Contrato.findById(contratoId)
+    .select('servico cliente freelancer')
     .populate('servico', 'nome')
     .populate('cliente', 'nome')
-    .populate('freelancer', 'nome');
+    .populate('freelancer', 'nome')
+    .lean();
 
   if (!contrato) return null;
 
@@ -78,35 +85,41 @@ exports.resumoPorContrato = async (req, res) => {
 
     const contratos = await Contrato.find({
       $or: [{ cliente: userId }, { freelancer: userId }]
-    }).select('_id');
+    }).select('_id').lean();
 
     const contratoIds = contratos.map(c => c._id);
     if (!contratoIds.length) {
       return sucesso(res, 200, 'Resumo carregado.', []);
     }
 
-    const mensagens = await Mensagem.find({ contrato: { $in: contratoIds } })
-      .populate('remetente', 'nome fotoPerfil tipoConta')
-      .sort({ createdAt: 1 });
+    const userObjectId = toObjectId(userId);
 
-    const resumo = new Map();
+    // Antes esta rota carregava TODAS as mensagens de todos os contratos.
+    // Agora o MongoDB devolve só a última mensagem e a contagem de não lidas por contrato.
+    const [ultimas, naoLidas] = await Promise.all([
+      Mensagem.aggregate([
+        { $match: { contrato: { $in: contratoIds } } },
+        { $sort: { contrato: 1, createdAt: -1 } },
+        { $group: { _id: '$contrato', ultimaMensagem: { $first: '$$ROOT' } } },
+        { $sort: { 'ultimaMensagem.createdAt': -1 } }
+      ]),
+      Mensagem.aggregate([
+        { $match: { contrato: { $in: contratoIds }, remetente: { $ne: userObjectId }, lida: false } },
+        { $group: { _id: '$contrato', naoLidas: { $sum: 1 } } }
+      ])
+    ]);
 
-    mensagens.forEach((mensagem) => {
-      const contratoId = String(mensagem.contrato);
-      const atual = resumo.get(contratoId) || { contratoId, ultimaMensagem: null, naoLidas: 0 };
+    const naoLidasPorContrato = new Map(naoLidas.map(item => [String(item._id), item.naoLidas]));
+    const mensagens = ultimas.map(item => item.ultimaMensagem);
+    await Mensagem.populate(mensagens, { path: 'remetente', select: 'nome fotoPerfil tipoConta' });
 
-      const remetenteId = String(mensagem.remetente?._id || mensagem.remetente || '');
-      const enviadaPorOutro = remetenteId !== String(userId);
+    const resumo = mensagens.map((mensagem) => ({
+      contratoId: String(mensagem.contrato),
+      ultimaMensagem: mapMensagem(req, mensagem),
+      naoLidas: naoLidasPorContrato.get(String(mensagem.contrato)) || 0
+    }));
 
-      if (enviadaPorOutro && mensagem.lida === false) {
-        atual.naoLidas += 1;
-      }
-
-      atual.ultimaMensagem = mapMensagem(req, mensagem);
-      resumo.set(contratoId, atual);
-    });
-
-    return sucesso(res, 200, 'Resumo carregado.', Array.from(resumo.values()));
+    return sucesso(res, 200, 'Resumo carregado.', resumo);
   } catch (error) {
     console.error(error);
     return erro(res, 500, 'Erro ao carregar resumo das mensagens.');
@@ -124,21 +137,33 @@ exports.listarPorContrato = async (req, res) => {
     const contrato = await carregarContratoDoUsuario(contratoId, userId);
     if (!contrato) return erro(res, 403, 'Você não faz parte deste contrato ou ele não existe.');
 
-    // marca como lidas as mensagens enviadas pelo outro usuário.
-    await Mensagem.updateMany(
-      { contrato: contratoId, remetente: { $ne: userId }, lida: false },
-      { lida: true }
-    );
+    // marca como lidas as mensagens enviadas pelo outro usuário neste contrato.
+    // Depois limpa as notificações dessas mensagens para o sino não ficar preso.
+    const mensagensPendentes = await Mensagem.find({
+      contrato: contratoId,
+      remetente: { $ne: userId },
+      lida: false
+    }).select('_id').lean();
 
-    // também limpa notificações individuais de mensagem para o sino não ficar preso.
-    await Notificacao.updateMany(
-      { destinatario: userId, tipo: 'mensagem_nova', lida: false },
-      { lida: true }
-    );
+    const mensagemIds = mensagensPendentes.map(item => item._id);
+
+    await Promise.all([
+      Mensagem.updateMany(
+        { contrato: contratoId, remetente: { $ne: userId }, lida: false },
+        { lida: true }
+      ),
+      mensagemIds.length
+        ? Notificacao.updateMany(
+            { destinatario: userId, tipo: 'mensagem_nova', referenciaId: { $in: mensagemIds }, lida: false },
+            { lida: true }
+          )
+        : Promise.resolve()
+    ]);
 
     const mensagens = await Mensagem.find({ contrato: contratoId })
       .populate('remetente', 'nome fotoPerfil tipoConta')
-      .sort({ createdAt: 1 });
+      .sort({ createdAt: 1 })
+      .lean();
 
     return sucesso(res, 200, 'Mensagens carregadas.', mensagens.map(m => mapMensagem(req, m)));
   } catch (error) {
@@ -157,7 +182,7 @@ exports.contarNaoLidas = async (req, res) => {
     // busca contratos nos quais o usuário participa.
     const contratos = await Contrato.find({
       $or: [{ cliente: userId }, { freelancer: userId }]
-    }).select('_id');
+    }).select('_id').lean();
 
     const contratoIds = contratos.map(c => c._id);
 

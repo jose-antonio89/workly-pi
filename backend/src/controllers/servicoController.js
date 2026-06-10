@@ -16,7 +16,14 @@ function obterPaginacao(query = {}) {
   return { pagina, limite, skip: (pagina - 1) * limite };
 }
 
-// busca serviços já trazendo categoria e freelancer, porque o card do front precisa dessas infos.
+// busca serviços já trazendo somente os campos usados pelo front.
+// lean() evita criar documentos Mongoose completos para listas grandes.
+function popularServico(query) {
+  return query
+    .populate({ path: 'categoria', select: 'legacyId nome slug' })
+    .populate({ path: 'freelancer', select: 'nome fotoPerfil avaliacaoMedia totalAvaliacoes tipoConta' });
+}
+
 async function listarServicos(filtro = {}, opcoes = {}) {
   const ordenar = opcoes.ordenar || 'recentes';
   const ordenacoes = {
@@ -26,10 +33,9 @@ async function listarServicos(filtro = {}, opcoes = {}) {
     preco_desc: { preco: -1, createdAt: -1 }
   };
 
-  let query = Servico.find(filtro)
-    .populate('categoria')
-    .populate('freelancer')
-    .sort(ordenacoes[ordenar] || ordenacoes.recentes);
+  let query = popularServico(Servico.find(filtro))
+    .sort(ordenacoes[ordenar] || ordenacoes.recentes)
+    .lean();
 
   if (opcoes.limite) {
     query = query.skip(opcoes.skip || 0).limit(opcoes.limite);
@@ -87,7 +93,7 @@ async function montarFiltroServicos(query = {}) {
     if (disponibilidade) {
       filtroFreelancer.disponibilidade = new RegExp(disponibilidade.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     }
-    const freelancers = await Usuario.find(filtroFreelancer).select('_id');
+    const freelancers = await Usuario.find(filtroFreelancer).select('_id').lean();
     filtro.freelancer = { $in: freelancers.map(f => f._id) };
   }
 
@@ -132,11 +138,17 @@ exports.listarTodos = async (req, res) => {
     const precisaFiltrarAvaliacao = Number.isFinite(avaliacaoMin) && avaliacaoMin > 0;
     const limiteBusca = precisaFiltrarAvaliacao ? Math.min(limite * 4, 120) : limite;
 
-    const servicos = await listarServicos(filtro, {
+    const servicosPromise = listarServicos(filtro, {
       ordenar: req.query.ordenar,
       skip: precisaFiltrarAvaliacao ? 0 : skip,
       limite: limiteBusca
     });
+
+    const totalPromise = precisaFiltrarAvaliacao
+      ? Promise.resolve(null)
+      : Servico.countDocuments(filtro);
+
+    const [servicos, totalDocumentos] = await Promise.all([servicosPromise, totalPromise]);
 
     const filtrados = precisaFiltrarAvaliacao
       ? servicos.filter(servico => Number(servico.avaliacaoMediaServico || 0) >= avaliacaoMin)
@@ -146,9 +158,7 @@ exports.listarTodos = async (req, res) => {
       ? filtrados.slice(skip, skip + limite)
       : filtrados;
 
-    const totalBase = precisaFiltrarAvaliacao
-      ? filtrados.length
-      : await Servico.countDocuments(filtro);
+    const totalBase = precisaFiltrarAvaliacao ? filtrados.length : totalDocumentos;
 
     return sucesso(res, 200, 'Serviços carregados com sucesso.', resultado.map(servico => mapServico(req, servico)), {
       pagination: {
@@ -173,8 +183,10 @@ exports.buscarPorCategoria = async (req, res) => {
 
     const { pagina, limite, skip } = obterPaginacao(req.query);
     const filtro = { categoria: categoria._id };
-    const servicos = await listarServicos(filtro, { ordenar: req.query.ordenar, skip, limite });
-    const total = await Servico.countDocuments(filtro);
+    const [servicos, total] = await Promise.all([
+      listarServicos(filtro, { ordenar: req.query.ordenar, skip, limite }),
+      Servico.countDocuments(filtro)
+    ]);
 
     return sucesso(res, 200, 'Serviços da categoria carregados com sucesso.', servicos.map(servico => mapServico(req, servico)), {
       pagination: {
@@ -205,7 +217,7 @@ exports.criar = async (req, res) => {
     const nome = obterCampo(req.body, ['nome']);
     const descricao = obterCampo(req.body, ['descricao']);
     const preco = obterCampo(req.body, ['preco']);
-    const precoNegociavel = obterCampo(req.body, ['precoNegociavel', 'priceNegotiable']) === 'on' || obterCampo(req.body, ['precoNegociavel', 'priceNegotiable']) === 'true' || obterCampo(req.body, ['precoNegociavel', 'priceNegotiable']) === true;
+    const precoNegociavel = false;
     const valorCombinar = obterCampo(req.body, ['valorCombinar', 'priceByContact']) === 'on' || obterCampo(req.body, ['valorCombinar', 'priceByContact']) === 'true' || obterCampo(req.body, ['valorCombinar', 'priceByContact']) === true;
     const categoriaIdRecebido = obterCampo(req.body, ['categoriaId', 'genero_id']);
     const extra = obterCampo(req.body, ['extra']);
@@ -239,7 +251,7 @@ exports.criar = async (req, res) => {
       freelancer: usuario._id
     });
 
-    const servicoCompleto = await Servico.findById(servico._id).populate('categoria').populate('freelancer');
+    const servicoCompleto = await popularServico(Servico.findById(servico._id)).lean();
     const servicoComResumo = await anexarResumoAvaliacoes(servicoCompleto);
     return sucesso(res, 201, 'Serviço criado com sucesso!', mapServico(req, servicoComResumo));
   } catch (error) {
@@ -251,7 +263,7 @@ exports.criar = async (req, res) => {
 
 exports.buscarPorId = async (req, res) => {
   try {
-    const servico = await Servico.findById(req.params.id).populate('categoria').populate('freelancer');
+    const servico = await popularServico(Servico.findById(req.params.id)).lean();
     if (!servico) {
       return erro(res, 404, 'Serviço não encontrado.');
     }
@@ -265,7 +277,7 @@ exports.buscarPorId = async (req, res) => {
 };
 
 async function carregarServicoDoFreelancer(req, res) {
-  const servico = await Servico.findById(req.params.id).populate('categoria').populate('freelancer');
+  const servico = await popularServico(Servico.findById(req.params.id));
   if (!servico) {
     erro(res, 404, 'Serviço não encontrado.');
     return null;
@@ -287,18 +299,17 @@ exports.atualizar = async (req, res) => {
     const nome = obterCampo(req.body, ['nome']);
     const descricao = obterCampo(req.body, ['descricao']);
     const preco = obterCampo(req.body, ['preco']);
-    const precoNegociavelCampo = obterCampo(req.body, ['precoNegociavel', 'priceNegotiable']);
     const valorCombinarCampo = obterCampo(req.body, ['valorCombinar', 'priceByContact']);
     const categoriaIdRecebido = obterCampo(req.body, ['categoriaId', 'genero_id']);
     const extra = obterCampo(req.body, ['extra']);
 
-    const precoNegociavel = precoNegociavelCampo === 'on' || precoNegociavelCampo === 'true' || precoNegociavelCampo === true;
+    const precoNegociavel = false;
     const valorCombinar = valorCombinarCampo === 'on' || valorCombinarCampo === 'true' || valorCombinarCampo === true;
 
     if (nome !== undefined) servico.nome = String(nome).trim();
     if (descricao !== undefined) servico.descricao = String(descricao).trim();
     if (extra !== undefined) servico.extra = String(extra || '').trim();
-    if (precoNegociavelCampo !== undefined) servico.precoNegociavel = precoNegociavel;
+    servico.precoNegociavel = precoNegociavel;
     if (valorCombinarCampo !== undefined) servico.valorCombinar = valorCombinar;
 
     if (categoriaIdRecebido !== undefined && categoriaIdRecebido !== '') {
@@ -334,7 +345,7 @@ exports.atualizar = async (req, res) => {
     }
 
     await servico.save();
-    const completo = await Servico.findById(servico._id).populate('categoria').populate('freelancer');
+    const completo = await popularServico(Servico.findById(servico._id)).lean();
     const comResumo = await anexarResumoAvaliacoes(completo);
     return sucesso(res, 200, 'Serviço atualizado com sucesso.', mapServico(req, comResumo));
   } catch (error) {

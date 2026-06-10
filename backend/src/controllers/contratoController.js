@@ -17,7 +17,17 @@ const STATUS_ATIVOS = ['pendente', 'proposta_pendente', 'proposta_aceita', 'em_a
 const STATUS_FINAIS = ['cancelado', 'encerrado'];
 
 function popularContrato(query) {
-  return query.populate({ path: 'servico', populate: [{ path: 'categoria' }, { path: 'freelancer' }] }).populate('cliente').populate('freelancer');
+  const camposUsuario = 'nome fotoPerfil tipoConta areaAtuacao tituloProfissional bio localizacao site linkedin github instagram avaliacaoMedia totalAvaliacoes';
+  return query
+    .populate({
+      path: 'servico',
+      populate: [
+        { path: 'categoria', select: 'legacyId nome slug' },
+        { path: 'freelancer', select: camposUsuario }
+      ]
+    })
+    .populate({ path: 'cliente', select: camposUsuario })
+    .populate({ path: 'freelancer', select: camposUsuario });
 }
 
 function usuarioDoToken(req) {
@@ -77,7 +87,7 @@ async function salvarERetornar(req, res, contrato, mensagem = 'Contrato atualiza
 }
 
 // cria uma contratação nova.
-// aqui também nasce o fluxo de proposta quando o serviço é negociável ou valor a combinar.
+// aqui também nasce o fluxo de proposta quando o serviço é valor a combinar.
 exports.criar = async (req, res) => {
   try {
     const { servicoId } = req.body;
@@ -95,13 +105,7 @@ exports.criar = async (req, res) => {
     const userId = usuarioDoToken(req);
     if (String(servico.freelancer._id) === String(userId)) return erro(res, 400, 'Você não pode contratar o próprio serviço.');
 
-    const tipoContratacao = servico.valorCombinar ? 'combinar' : (servico.precoNegociavel ? 'negociavel' : 'fixo');
-
-    if (tipoContratacao === 'negociavel') {
-      if ((precoProposto === null || Number.isNaN(precoProposto) || precoProposto <= 0) && !mensagem) {
-        return erro(res, 400, 'Informe um valor proposto ou uma mensagem para negociar.');
-      }
-    }
+    const tipoContratacao = servico.valorCombinar ? 'combinar' : 'fixo';
 
     if (tipoContratacao === 'combinar' && !mensagem) {
       return erro(res, 400, 'Envie uma mensagem para combinar o valor com o freelancer.');
@@ -140,8 +144,8 @@ exports.criar = async (req, res) => {
 exports.meus = async (req, res) => {
   try {
     const userId = usuarioDoToken(req);
-    const contratos = await popularContrato(Contrato.find({ $or: [{ cliente: userId }, { freelancer: userId }] }).sort({ createdAt: -1 }));
-    const avaliacoes = await Avaliacao.find({ autor: userId, contrato: { $in: contratos.map(c => c._id) } }).select('contrato');
+    const contratos = await popularContrato(Contrato.find({ $or: [{ cliente: userId }, { freelancer: userId }] }).sort({ createdAt: -1 })).lean();
+    const avaliacoes = await Avaliacao.find({ autor: userId, contrato: { $in: contratos.map(c => c._id) } }).select('contrato').lean();
 
     const contratosAvaliados = new Set(avaliacoes.map(a => String(a.contrato)));
     return sucesso(res, 200, 'Contratos carregados com sucesso.', contratos.map(c => ({
@@ -153,7 +157,7 @@ exports.meus = async (req, res) => {
 };
 
 // ação do freelancer: aceita proposta ou inicia contrato fixo.
-// contrato fixo já vai direto pra em andamento; proposta negociável passa por proposta_aceita.
+// contrato fixo já vai direto pra em andamento; proposta de valor a combinar passa por proposta_aceita.
 exports.aceitar = async (req, res) => {
   try {
     const dados = await carregarContratoAutorizado(req, res);

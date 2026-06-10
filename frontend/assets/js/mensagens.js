@@ -9,6 +9,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
   const initialContratoId = params.get('contrato') || params.get('id');
 
+  const veioDoSinoMensagens = params.get('notificacoes') === 'mensagens';
+
+  async function limparNotificacoesDeMensagens() {
+    try {
+      await window.Workly.apiFetch('/api/notificacoes/contexto/lidas', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contexto: 'mensagens' })
+      });
+      await window.Workly.refreshNotificationBadge?.();
+    } catch (error) {
+      console.error('Erro ao limpar notificações de mensagens:', error);
+    }
+  }
+
   const conversationList = document.getElementById('conversationList');
   const conversationSearch = document.getElementById('conversationSearch');
   const messagePanel = document.getElementById('messagePanel');
@@ -251,7 +266,6 @@ function renderChatShell(c) {
           <p>Conversa com <strong>${esc(outro.nome || 'Usuário')}</strong></p>
         </div>
         <div class="message-chat-actions">
-          ${c.idServico ? `<a class="message-top-action" href="detalhe-servico.html?id=${esc(c.idServico)}"><i class="fas fa-eye"></i> Ver serviço</a>` : ''}
           <button class="message-top-action" type="button" id="openContractDetails"><i class="fas fa-circle-info"></i> Detalhes</button>
         </div>
       </header>
@@ -266,8 +280,26 @@ function renderChatShell(c) {
       </form>
     </article>`;
 
+    const messageForm = document.getElementById('messageForm');
+    const messageText = document.getElementById('messageText');
+
     document.getElementById('openContractDetails')?.addEventListener('click', () => openContractDetails(c));
-    document.getElementById('messageForm')?.addEventListener('submit', sendMessage);
+    messageForm?.addEventListener('submit', sendMessage);
+
+    messageText?.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return;
+
+      event.preventDefault();
+
+      const texto = String(messageText.value || '').trim();
+      if (!texto) return;
+
+      if (typeof messageForm.requestSubmit === 'function') {
+        messageForm.requestSubmit();
+      } else {
+        messageForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      }
+    });
   }
 
   // aqui a conversa é aberta de verdade, então o backend marca as mensagens como lidas.
@@ -386,7 +418,6 @@ function openContractDetails(c) {
       <div><dt>Tipo</dt><dd>${esc(tipoLabel(c))}</dd></div>
       <div><dt>Valor</dt><dd>${esc(priceLabel(c))}</dd></div>
       <div><dt>Prazo desejado</dt><dd>${esc(c.prazoDesejado || c.prazo_desejado || 'Não informado')}</dd></div>
-      <div><dt>Mensagem inicial</dt><dd>${esc(c.mensagem || 'Sem mensagem inicial.')}</dd></div>
       <div><dt>Referências</dt><dd>${c.referencias ? `<a href="${esc(c.referencias)}" target="_blank" rel="noopener noreferrer">${esc(c.referencias)}</a>` : 'Não informado'}</dd></div>
     </dl>
 
@@ -423,6 +454,8 @@ function openContractDetails(c) {
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') closeDetails();
   });
+
+  if (veioDoSinoMensagens) await limparNotificacoesDeMensagens();
 
   await loadContracts();
 

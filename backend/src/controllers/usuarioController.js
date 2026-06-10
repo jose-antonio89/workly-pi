@@ -49,7 +49,7 @@ function contratoTemValorConfirmado(contrato) {
   // contratação direta/preço fixo já nasce com valor fechado.
   if (tipoContratacao === 'fixo') return true;
 
-  // propostas de preço negociável/valor a combinar só entram na receita
+  // propostas de valor a combinar só entram na receita
   // depois que o freelancer aceitar/iniciar/finalizar o contrato.
   return ['proposta_aceita', 'em_andamento', 'concluido', 'encerrado'].includes(status);
 }

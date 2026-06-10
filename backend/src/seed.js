@@ -9,6 +9,7 @@ const Usuario = require('./models/Usuario');
 const Contrato = require('./models/Contrato');
 const Favorito = require('./models/Favorito');
 const Avaliacao = require('./models/Avaliacao');
+const { gerarCpfValido } = require('./utils/cpfUtils');
 
 // senha padrão dos usuários demo.
 const SENHA_DEMO = '12345678';
@@ -122,6 +123,24 @@ const SERVICOS_POR_AREA = {
   ]
 };
 
+
+function montarExtraServico(area, valorCombinar = false) {
+  const extrasPorArea = {
+    'Design': 'Inclui briefing visual, arquivos finais nos formatos combinados e 1 rodada de ajustes. O cliente deve enviar referências, textos e medidas das peças.',
+    'Programação': 'Inclui implementação do escopo combinado, testes básicos e 1 rodada de ajustes. O cliente deve enviar regras de negócio, referências, acessos e conteúdos necessários.',
+    'Vídeo/Edição': 'Inclui cortes, acabamento simples, legenda quando combinado e exportação final. O cliente deve enviar arquivos brutos, identidade visual e referências de ritmo/estilo.',
+    'Inteligência Artificial': 'Inclui configuração inicial, testes de fluxo e orientação de uso. O cliente deve enviar exemplos, base de conhecimento, regras do processo e acessos necessários.',
+    'Tradução/Escritor': 'Inclui produção ou revisão textual, ajustes de clareza e 1 rodada de alterações. O cliente deve enviar objetivo, público, tom de voz e materiais de apoio.',
+    'Fotografia': 'Inclui sessão ou tratamento conforme combinado, seleção das melhores imagens e edição básica. O cliente deve informar local, quantidade de fotos/produtos e referências.',
+    'Áudio/Música': 'Inclui limpeza, cortes, equalização simples e exportação final. O cliente deve enviar áudio bruto, roteiro/vinheta quando houver e referência de qualidade desejada.'
+  };
+
+  const textoBase = extrasPorArea[area] || 'Inclui alinhamento inicial, entrega do material combinado e 1 rodada de ajustes.';
+  return valorCombinar
+    ? `${textoBase} Valor final definido após entender escopo, prazo e quantidade de entregáveis.`
+    : textoBase;
+}
+
 const COMENTARIOS = [
   'Entrega excelente, comunicação clara e resultado acima do esperado.',
   'O serviço ficou muito profissional e foi entregue dentro do prazo.',
@@ -157,7 +176,9 @@ function slug(texto = '') {
 }
 
 function gerarCpf(prefixo, numero) {
-  return `${prefixo}.${String(numero).padStart(3, '0')}.${String((numero * 7) % 1000).padStart(3, '0')}-${String((numero * 13) % 100).padStart(2, '0')}`;
+  const grupo = Number(String(prefixo).replace(/\D/g, '').slice(0, 3)) || 900;
+  const baseNumerica = (grupo * 1000000) + Number(numero || 1);
+  return gerarCpfValido(baseNumerica);
 }
 
 function garantirArquivosDemo() {
@@ -237,7 +258,10 @@ async function criarServicoSeNaoExistir(dados) {
 
 async function criarContratoSeNaoExistir(dados) {
   const contratoExistente = await Contrato.findOne({ cliente: dados.cliente, servico: dados.servico, status: dados.status });
-  if (contratoExistente) return contratoExistente;
+  if (contratoExistente) {
+    await Contrato.updateOne({ _id: contratoExistente._id }, { $set: dados });
+    return Contrato.findById(contratoExistente._id);
+  }
   return Contrato.create(dados);
 }
 
@@ -348,7 +372,7 @@ async function popularBancoDemo() {
       const modelo = escolher(modelos, i + j);
       const [titulo, descricao, precoBase] = modelo;
       const numero = String(i + 1).padStart(2, '0') + '-' + String(j + 1);
-      const precoNegociavel = (i + j) % 7 === 0;
+      const precoNegociavel = false;
       const valorCombinar = (i + j) % 13 === 0;
       const preco = valorCombinar ? null : precoBase + ((i * 17 + j * 53) % 420);
 
@@ -358,11 +382,7 @@ async function popularBancoDemo() {
         preco,
         precoNegociavel,
         valorCombinar,
-        extra: precoNegociavel
-          ? 'Valor pode variar conforme escopo e prazo.'
-          : valorCombinar
-            ? 'Freelancer envia orçamento após entender o pedido.'
-            : 'Inclui alinhamento inicial e uma rodada de ajustes.',
+        extra: montarExtraServico(area, valorCombinar),
         categoria: categorias[area]?._id || Object.values(categorias)[0]?._id,
         freelancer: freelancer._id
       }));
@@ -377,8 +397,9 @@ async function popularBancoDemo() {
     const servico = servicos[i % servicos.length];
     const freelancer = servico.freelancer;
     const cliente = contratantes[(i * 7) % contratantes.length];
-    const tipoContratacao = servico.valorCombinar ? 'combinar' : servico.precoNegociavel ? 'negociavel' : 'fixo';
-    const status = statusCiclo[i % statusCiclo.length];
+    const tipoContratacao = servico.valorCombinar ? 'combinar' : 'fixo';
+    const statusBase = statusCiclo[i % statusCiclo.length];
+    const status = tipoContratacao === 'fixo' && statusBase.startsWith('proposta_') ? 'pendente' : statusBase;
     const precoBase = servico.preco || (350 + ((i * 29) % 1700));
     const precoProposto = tipoContratacao === 'fixo' ? null : precoBase + ((i % 5) * 80);
     const meses = 5 - (i % 6);

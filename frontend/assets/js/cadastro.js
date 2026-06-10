@@ -1,9 +1,10 @@
-// script para página de cadastro: lida com campos dinâmicos, validações, mensagens de erro e comunicação com a api para criar conta
+// script para página de cadastro: lida com campos dinâmicos, validações, máscara de CPF e comunicação com a API para criar conta.
 
 document.addEventListener('DOMContentLoaded', function () {
     const tipoConta = document.getElementById('tipo_conta');
     const areaAtuacaoGroup = document.getElementById('area-atuacao-group');
     const areaAtuacao = document.getElementById('area_atuacao');
+    const cpfInput = document.getElementById('cpf');
     const form = document.getElementById('formCadastro');
     const submitButton = form?.querySelector('[type="submit"]');
 
@@ -28,6 +29,37 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
+    function onlyDigits(value = '') {
+        return String(value).replace(/\D/g, '').slice(0, 11);
+    }
+
+    function formatCpf(value = '') {
+        const digits = onlyDigits(value);
+        if (digits.length <= 3) return digits;
+        if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+        if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+        return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
+    }
+
+    function isRepeatedCpf(digits) {
+        return /^(\d)\1{10}$/.test(digits);
+    }
+
+
+    function validateCpf(value) {
+        const digits = onlyDigits(value);
+
+        // Validação simplificada para apresentação do PI.
+        // Permite CPF sequencial e não confere dígito verificador.
+        // Bloqueia apenas tamanho incorreto e CPF com todos os números iguais.
+        // CPF duplicado continua sendo bloqueado pelo backend/banco.
+        if (!digits) return { valid: false, message: 'CPF é obrigatório' };
+        if (digits.length !== 11) return { valid: false, message: 'CPF deve ter 11 números' };
+        if (isRepeatedCpf(digits)) return { valid: false, message: 'CPF não pode ter todos os números iguais' };
+
+        return { valid: true, message: '' };
+    }
+
     function updateAreaAtuacaoVisibility() {
         if (tipoConta.value === 'Freelancer') {
             areaAtuacaoGroup.style.display = 'block';
@@ -50,6 +82,18 @@ document.addEventListener('DOMContentLoaded', function () {
         return errorMessage;
     }
 
+    function setFieldState(field, state, message = '') {
+        const formGroup = field.closest('.form-group');
+        if (!formGroup) return;
+
+        const errorMessage = ensureErrorMessage(formGroup);
+        formGroup.classList.remove('error', 'success');
+        errorMessage.textContent = message;
+        errorMessage.style.display = message ? 'block' : 'none';
+
+        if (state) formGroup.classList.add(state);
+    }
+
     function isValidEmail(email) {
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
@@ -57,63 +101,71 @@ document.addEventListener('DOMContentLoaded', function () {
     function validateField(field) {
         const formGroup = field.closest('.form-group');
         if (!formGroup) return true;
-        const errorMessage = ensureErrorMessage(formGroup);
-        formGroup.classList.remove('error', 'success');
-        errorMessage.textContent = '';
-        errorMessage.style.display = 'none';
+
+        setFieldState(field, '');
 
         if (field.type === 'checkbox') {
             if (field.required && !field.checked) {
-                formGroup.classList.add('error');
-                errorMessage.textContent = 'Este campo é obrigatório';
-                errorMessage.style.display = 'block';
+                setFieldState(field, 'error', 'Este campo é obrigatório');
                 return false;
             }
-            formGroup.classList.add('success');
+            setFieldState(field, 'success');
+            return true;
+        }
+
+        if (field.id === 'cpf') {
+            field.value = formatCpf(field.value);
+            const cpfValidation = validateCpf(field.value);
+
+            if (!cpfValidation.valid) {
+                setFieldState(field, 'error', cpfValidation.message);
+                return false;
+            }
+
+            setFieldState(field, 'success');
             return true;
         }
 
         const value = field.value.trim();
         if (field.required && !value) {
-            formGroup.classList.add('error');
-            errorMessage.textContent = 'Este campo é obrigatório';
-            errorMessage.style.display = 'block';
+            setFieldState(field, 'error', 'Este campo é obrigatório');
             return false;
         }
 
         if (field.type === 'email' && value && !isValidEmail(value)) {
-            formGroup.classList.add('error');
-            errorMessage.textContent = 'Por favor, insira um email válido';
-            errorMessage.style.display = 'block';
+            setFieldState(field, 'error', 'Por favor, insira um email válido');
             return false;
         }
 
         if (field.id === 'senha' && value && value.length < 8) {
-            formGroup.classList.add('error');
-            errorMessage.textContent = 'A senha deve ter pelo menos 8 caracteres';
-            errorMessage.style.display = 'block';
+            setFieldState(field, 'error', 'A senha deve ter pelo menos 8 caracteres');
             return false;
         }
 
         if (field.id === 'confirmar_senha') {
             const senha = document.getElementById('senha').value.trim();
             if (value && senha && value !== senha) {
-                formGroup.classList.add('error');
-                errorMessage.textContent = 'As senhas não coincidem';
-                errorMessage.style.display = 'block';
+                setFieldState(field, 'error', 'As senhas não coincidem');
                 return false;
             }
         }
 
-        formGroup.classList.add('success');
+        setFieldState(field, 'success');
         return true;
     }
 
     updateAreaAtuacaoVisibility();
+
     tipoConta.addEventListener('change', function () {
         updateAreaAtuacaoVisibility();
         validateField(this);
     });
+
+    if (cpfInput) {
+        cpfInput.addEventListener('input', function () {
+            this.value = formatCpf(this.value);
+        });
+    }
 
     form.addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -127,6 +179,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const senha = document.getElementById('senha').value.trim();
         const confirmarSenha = document.getElementById('confirmar_senha').value.trim();
         const termos = document.getElementById('termos').checked;
+
         if (senha !== confirmarSenha || !termos) {
             hasError = true;
         }
@@ -150,6 +203,7 @@ document.addEventListener('DOMContentLoaded', function () {
             delete data.area_atuacao;
         }
 
+        data.cpf = onlyDigits(data.cpf);
         data.tipoConta = data.tipo_conta;
         data.areaAtuacao = data.area_atuacao;
 

@@ -1161,19 +1161,44 @@ accountSettingsForm?.addEventListener('submit', async function(e) {
         });
     }
 
+    function formatZoomValue(value) {
+        return Number(value).toFixed(6).replace(/0+$/, '').replace(/\.$/, '') || '0';
+    }
+
+    function getPhotoZoomBounds() {
+        return {
+            min: Number(photoZoom?.min) || cropState.minZoom || 1,
+            max: Number(photoZoom?.max) || (cropState.minZoom || 1) * 3
+        };
+    }
+
+    function setPhotoZoomValue(value) {
+        const bounds = getPhotoZoomBounds();
+        const safeValue = Math.min(bounds.max, Math.max(bounds.min, Number(value) || bounds.min));
+        cropState.zoom = safeValue;
+        if (photoZoom) {
+            // Firefox/Floorp valida range de forma mais rígida quando min/step são decimais.
+            // step="any" evita o erro nativo de "valor inválido" ao salvar a foto.
+            photoZoom.step = 'any';
+            photoZoom.value = formatZoomValue(safeValue);
+        }
+        return safeValue;
+    }
+
     function resetCrop() {
         if (!cropState.image) return;
         const frame = getCropFrame();
         cropState.minZoom = Math.max(frame.frameSize / cropState.image.naturalWidth, frame.frameSize / cropState.image.naturalHeight);
-        cropState.zoom = cropState.minZoom;
         cropState.x = 0;
         cropState.y = 0;
         if (photoZoom) {
-            photoZoom.min = String(cropState.minZoom.toFixed(4));
-            photoZoom.max = String((cropState.minZoom * 3).toFixed(4));
-            photoZoom.step = String(Math.max(cropState.minZoom / 100, 0.001));
-            photoZoom.value = String(cropState.zoom);
+            const minZoom = formatZoomValue(cropState.minZoom);
+            const maxZoom = formatZoomValue(cropState.minZoom * 3);
+            photoZoom.min = minZoom;
+            photoZoom.max = maxZoom;
+            photoZoom.step = 'any';
         }
+        setPhotoZoomValue(cropState.minZoom);
         requestCropRender();
     }
 
@@ -1187,6 +1212,7 @@ accountSettingsForm?.addEventListener('submit', async function(e) {
         if (photoZoom) {
             photoZoom.min = '1';
             photoZoom.max = '3';
+            photoZoom.step = 'any';
             photoZoom.value = '1';
         }
         if (cropCtx && cropCanvas) {
@@ -1274,7 +1300,7 @@ accountSettingsForm?.addEventListener('submit', async function(e) {
     });
 
     photoZoom?.addEventListener('input', function() {
-        cropState.zoom = Number(this.value) || cropState.minZoom;
+        setPhotoZoomValue(this.value);
         requestCropRender();
     });
 
@@ -1314,9 +1340,7 @@ accountSettingsForm?.addEventListener('submit', async function(e) {
         e.preventDefault();
         const direction = e.deltaY > 0 ? -1 : 1;
         const step = Math.max(cropState.minZoom * 0.08, 0.01);
-        const maxZoom = cropState.minZoom * 3;
-        cropState.zoom = Math.min(maxZoom, Math.max(cropState.minZoom, cropState.zoom + direction * step));
-        if (photoZoom) photoZoom.value = String(cropState.zoom);
+        setPhotoZoomValue(cropState.zoom + direction * step);
         requestCropRender();
     }, { passive: false });
 
@@ -1349,6 +1373,7 @@ accountSettingsForm?.addEventListener('submit', async function(e) {
 
     const updatePhotoForm = document.getElementById('update-photo-form');
     if (updatePhotoForm) {
+        updatePhotoForm.noValidate = true;
         updatePhotoForm.addEventListener('submit', async function(e) {
             e.preventDefault();
 

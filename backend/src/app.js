@@ -27,11 +27,15 @@ const limitadorLogin = rateLimit({
 
 app.use(cors({ origin: ambiente.frontendUrl === '*' ? true : ambiente.frontendUrl }));
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
+app.use('/uploads', express.static(path.resolve(__dirname, '../uploads'), {
+  maxAge: '7d',
+  etag: true,
+  immutable: true
+}));
 
 // rate limit cobre login e cadastro 
 app.use('/api/autenticacao/login', limitadorLogin);

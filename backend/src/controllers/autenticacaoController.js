@@ -6,32 +6,10 @@ const ambiente = require('../config/ambiente');
 const { mapUsuario } = require('../utils/mapeadoresResposta');
 const { sucesso, erro } = require('../utils/apiResponse');
 const { obterCampo, normalizarTipoConta } = require('../utils/requisicaoUtils');
+const { normalizarCpf, motivoCpfInvalido } = require('../utils/cpfUtils');
 
 // regex simples para e-mail — valida formato básico sem consulta externa.
 const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// valida cpf: apenas dígitos, 11 caracteres, e verifica os dois dígitos verificadores.
-function validarCpf(cpf) {
-  const digits = String(cpf).replace(/\D/g, '');
-  if (digits.length !== 11) return false;
-  // rejeita sequências como 111.111.111-11
-  if (/^(\d)\1{10}$/.test(digits)) return false;
-
-  const calc = (fator) => {
-    let soma = 0;
-    for (let i = 0; i < fator - 1; i++) {
-      soma += Number(digits[i]) * (fator - i);
-    }
-    const resto = (soma * 10) % 11;
-    return resto === 10 || resto === 11 ? 0 : resto;
-  };
-
-  return calc(10) === Number(digits[9]) && calc(11) === Number(digits[10]);
-}
-
-function normalizarCpf(cpf) {
-  return String(cpf).replace(/\D/g, '');
-}
 
 // cadastro: valida campos, verifica e-mail e cpf únicos, cria o usuário.
 exports.cadastrar = async (req, res) => {
@@ -57,8 +35,9 @@ exports.cadastrar = async (req, res) => {
     }
 
     const cpfNormalizado = normalizarCpf(cpf);
-    if (!validarCpf(cpfNormalizado)) {
-      return erro(res, 400, 'CPF inválido. Verifique os dígitos informados.');
+    const erroCpf = motivoCpfInvalido(cpfNormalizado);
+    if (erroCpf) {
+      return erro(res, 400, erroCpf);
     }
 
     const tipoContaNormalizado = normalizarTipoConta(tipoContaRecebido);
@@ -91,6 +70,15 @@ exports.cadastrar = async (req, res) => {
 
     return sucesso(res, 201, 'Cadastro realizado com sucesso!');
   } catch (error) {
+    if (error?.code === 11000) {
+      if (error.keyPattern?.cpf || error.keyValue?.cpf) {
+        return erro(res, 409, 'Já existe um usuário cadastrado com este CPF.');
+      }
+      if (error.keyPattern?.email || error.keyValue?.email) {
+        return erro(res, 409, 'Já existe um usuário cadastrado com este e-mail.');
+      }
+    }
+
     console.error(error);
     return erro(res, 500, 'Erro ao cadastrar usuário.');
   }

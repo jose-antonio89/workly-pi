@@ -1,13 +1,24 @@
 
 const mongoose = require('mongoose');
+const { normalizarCpf, validarCpf } = require('../utils/cpfUtils');
 
 const usuarioSchema = new mongoose.Schema(
   {
     nome: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     senha: { type: String, required: true },
-    // cpf armazenado apenas com dígitos (sem formatação) e único por cadastro.
-    cpf: { type: String, required: true, unique: true, trim: true },
+    // CPF armazenado apenas com dígitos, validado no model e único no banco.
+    cpf: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      set: normalizarCpf,
+      validate: {
+        validator: validarCpf,
+        message: 'CPF inválido.'
+      }
+    },
     telefone: { type: String, default: '', trim: true },
     tipoConta: { type: String, enum: ['Freelancer', 'Contratante'], required: true },
     areaAtuacao: { type: String, default: '', trim: true },
@@ -36,5 +47,9 @@ const usuarioSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+
+usuarioSchema.index({ tipoConta: 1, localizacao: 1 });
+usuarioSchema.index({ tipoConta: 1, disponibilidade: 1 });
 
 module.exports = mongoose.model('Usuario', usuarioSchema);

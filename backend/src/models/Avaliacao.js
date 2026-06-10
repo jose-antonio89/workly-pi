@@ -12,6 +12,8 @@ const avaliacaoSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 avaliacaoSchema.index({ autor: 1, contrato: 1 }, { unique: true });
+avaliacaoSchema.index({ servico: 1 });
+avaliacaoSchema.index({ freelancer: 1, createdAt: -1 });
 
 // terceiro parâmetro força o mongodb a usar exatamente "avaliacoes".
 // sem isso, o mongoose pluraliza "avaliacao" como "avaliacaos".

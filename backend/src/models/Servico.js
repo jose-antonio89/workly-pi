@@ -16,4 +16,10 @@ const servicoSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+
+servicoSchema.index({ categoria: 1, createdAt: -1 });
+servicoSchema.index({ freelancer: 1, createdAt: -1 });
+servicoSchema.index({ preco: 1, createdAt: -1 });
+servicoSchema.index({ nome: 'text', descricao: 'text', extra: 'text' });
+
 module.exports = mongoose.model('Servico', servicoSchema);

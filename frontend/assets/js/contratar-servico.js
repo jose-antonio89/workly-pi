@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function priceLabel(service) {
     if (service.valorCombinar) return 'Valor a combinar';
-    if (service.precoNegociavel) return `A partir de ${window.Workly.formatCurrency(service.preco)}`;
     return window.Workly.formatCurrency(service.preco);
   }
 

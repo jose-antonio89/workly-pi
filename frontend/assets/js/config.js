@@ -9,7 +9,7 @@
 })();
 
 function injectGlobalThemeStyles() {
-    if (!document.querySelector('link[data-workly-theme="global"]')) {
+    if (!document.querySelector('link[data-workly-theme="global"], link[href$="theme-global.css"]')) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = '../assets/css/theme-global.css';
@@ -18,16 +18,29 @@ function injectGlobalThemeStyles() {
     }
 }
 
+function updateThemeLogos() {
+    const darkEnabled = localStorage.getItem('darkMode') === 'enabled';
+    document.querySelectorAll('[data-logo-light][data-logo-dark]').forEach((logo) => {
+        const nextLogo = darkEnabled ? logo.dataset.logoDark : logo.dataset.logoLight;
+        if (nextLogo && logo.getAttribute('src') !== nextLogo) {
+            logo.setAttribute('src', nextLogo);
+        }
+    });
+}
+
 // aplica o tema salvo no localstorage e atualiza o ícone do botão.
 function applyThemeState() {
     const darkEnabled = localStorage.getItem('darkMode') === 'enabled';
-    document.body.classList.toggle('dark-mode', darkEnabled);
+    if (document.body) {
+        document.body.classList.toggle('dark-mode', darkEnabled);
+    }
     document.documentElement.classList.toggle('dark-mode-enabled', darkEnabled);
     const toggle = document.querySelector('.theme-toggle');
     if (toggle) {
         toggle.setAttribute('aria-label', darkEnabled ? 'Ativar modo claro' : 'Ativar modo escuro');
         toggle.innerHTML = `<i class="fas ${darkEnabled ? 'fa-sun' : 'fa-moon'}"></i>`;
     }
+    updateThemeLogos();
 }
 
 // cria o botão de tema uma vez só, sem precisar repetir ele em todo html.
@@ -291,7 +304,7 @@ window.Workly = (() => {
             idUsuario: service.idUsuario || service.id_usuario || null,
             nomeFreelancer: service.nomeFreelancer || service.nome_freelancer || '',
             fotoPerfil: service.fotoPerfil || service.foto_perfil || DEFAULT_PROFILE_IMAGE,
-            precoNegociavel: Boolean(service.precoNegociavel || service.preco_negociavel),
+            precoNegociavel: false,
             valorCombinar: Boolean(service.valorCombinar || service.valor_combinar),
             avaliacaoMediaServico: Number(service.avaliacaoMediaServico ?? service.avaliacao_media_servico ?? service.mediaAvaliacoes ?? 0),
             totalAvaliacoesServico: Number(service.totalAvaliacoesServico ?? service.total_avaliacoes_servico ?? service.totalAvaliacoes ?? 0),
@@ -439,15 +452,15 @@ window.Workly = (() => {
             return `
                 <div class="servico-card-modern">
                     <div class="servico-card-modern-header">
-                        <img src="${s.fotoPerfil}" alt="Foto do usuário" class="servico-card-modern-user-photo" onerror="this.src='../assets/img/perfis/perfil_padrao.svg'">
+                        <img src="${s.fotoPerfil}" alt="Foto do usuário" class="servico-card-modern-user-photo" loading="lazy" decoding="async" onerror="this.src='../assets/img/perfis/perfil_padrao.svg'">
                         <a class="servico-card-modern-user-name" href="perfil-publico.html?id=${s.idUsuario}" onclick="event.stopPropagation()">${escapeHtml(s.nomeFreelancer)}</a>
                     </div>
-                    <img src="${s.imagemServico}" alt="Imagem do serviço" class="servico-card-modern-image" onerror="this.src='../assets/img/servicos/servico_padrao.svg'">
+                    <img src="${s.imagemServico}" alt="Imagem do serviço" class="servico-card-modern-image" loading="lazy" decoding="async" onerror="this.src='../assets/img/servicos/servico_padrao.svg'">
                     <div class="servico-card-modern-content">
                         <span class="servico-card-modern-category">${escapeHtml(s.nomeCategoria)}</span>
                         <h3 class="servico-card-modern-title">${escapeHtml(s.nome)}</h3>
                         ${serviceCardMetaMarkup(s)}
-                        <p class="servico-card-modern-price">${s.valorCombinar ? 'Valor a combinar' : (s.precoNegociavel ? 'A partir de ' + formatCurrency(s.preco) : formatCurrency(s.preco))}</p>
+                        <p class="servico-card-modern-price">${s.valorCombinar ? 'Valor a combinar' : formatCurrency(s.preco)}</p>
                         <div class="servico-card-modern-actions">
                             <button class="servico-card-modern-edit-button" onclick="window.location.href='detalhe-servico.html?id=${s.idServico}'">
                                 <i class="fas fa-eye"></i> Ver detalhes
@@ -462,13 +475,13 @@ window.Workly = (() => {
         return `
             <div class="servico-card wk-service-card" onclick="window.location.href='detalhe-servico.html?id=${s.idServico}'">
                 <div class="wk-service-image-wrap">
-                    <img src="${s.imagemServico}" alt="Imagem do serviço" class="card-img ${String(s.imagemServico).includes('servico_padrao.svg') ? 'is-default-service-image' : ''}" onerror="this.src='../assets/img/servicos/servico_padrao.svg'; this.classList.add('is-default-service-image')">
+                    <img src="${s.imagemServico}" alt="Imagem do serviço" loading="lazy" decoding="async" class="card-img ${String(s.imagemServico).includes('servico_padrao.svg') ? 'is-default-service-image' : ''}" onerror="this.src='../assets/img/servicos/servico_padrao.svg'; this.classList.add('is-default-service-image')">
                     <span class="wk-service-category-badge">${escapeHtml(s.nomeCategoria)}</span>
                 </div>
 
                 <div class="wk-service-body">
                     <div class="wk-service-creator-line">
-                        <img src="${s.fotoPerfil}" alt="Foto de ${escapeHtml(s.nomeFreelancer)}" class="creator-img wk-service-avatar" onerror="this.src='../assets/img/perfis/perfil_padrao.svg'">
+                        <img src="${s.fotoPerfil}" alt="Foto de ${escapeHtml(s.nomeFreelancer)}" loading="lazy" decoding="async" class="creator-img wk-service-avatar" onerror="this.src='../assets/img/perfis/perfil_padrao.svg'">
                         <a class="creator-name" href="perfil-publico.html?id=${s.idUsuario}" onclick="event.stopPropagation()">${escapeHtml(s.nomeFreelancer)}</a>
                     </div>
 
@@ -479,7 +492,7 @@ window.Workly = (() => {
 
                     <div class="wk-service-price-row">
                         <div class="wk-service-price">
-                            <small>${s.precoNegociavel ? 'A partir de' : 'Valor'}</small>
+                            <small>Valor</small>
                             <strong>${s.valorCombinar ? 'Valor a combinar' : formatCurrency(s.preco)}</strong>
                         </div>
                         ${variant === 'my-services' ? `
@@ -516,6 +529,7 @@ window.Workly = (() => {
         loadingMarkup,
         showAlert,
         showConfirm,
+        updateThemeLogos,
         defaultProfileImage: DEFAULT_PROFILE_IMAGE,
         defaultServiceImage: DEFAULT_SERVICE_IMAGE
     };

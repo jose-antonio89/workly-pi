@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     summary.innerHTML = `<article class="module-card chat-summary-card">
-      <img class="module-card-img" src="${esc(c.imagemServico || '../assets/img/servicos/servico_padrao.svg')}" onerror="this.src='../assets/img/servicos/servico_padrao.svg'" alt="">
+      <img class="module-card-img" loading="lazy" decoding="async" src="${esc(c.imagemServico || '../assets/img/servicos/servico_padrao.svg')}" onerror="this.src='../assets/img/servicos/servico_padrao.svg'" alt="">
       <div class="module-card-body">
         <span class="module-pill status ${esc(c.status || '')}">${esc(status)}</span>
         <h3>${esc(c.nomeServico || 'Serviço')}</h3>
@@ -126,6 +126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         : '<div class="workly-chat-empty"><i class="fas fa-comments"></i><strong>Nenhuma mensagem ainda</strong><span>Envie a primeira mensagem para combinar detalhes do contrato.</span></div>';
 
       messagesBox.scrollTop = messagesBox.scrollHeight;
+      await window.Workly.refreshNotificationBadge?.();
     } catch (error) {
       messagesBox.innerHTML = `<div class="workly-chat-empty error"><i class="fas fa-triangle-exclamation"></i><strong>Erro ao carregar mensagens</strong><span>${esc(error.message)}</span></div>`;
     }

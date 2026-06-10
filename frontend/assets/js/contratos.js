@@ -6,6 +6,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   const list = document.getElementById('contratos-list');
   if (!window.Workly.getToken()) { location.href = 'login.html'; return; }
 
+  const params = new URLSearchParams(location.search);
+  const veioDoSinoContratos = params.get('notificacoes') === 'contratos';
+
+  async function limparNotificacoesDeContratos() {
+    try {
+      await window.Workly.apiFetch('/api/notificacoes/contexto/lidas', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contexto: 'contratos', referenciaId: params.get('contrato') || undefined })
+      });
+      await window.Workly.refreshNotificationBadge?.();
+    } catch (error) {
+      console.error('Erro ao limpar notificações de contratos:', error);
+    }
+  }
+
   const toast = (msg) => {
     let t = document.querySelector('.module-toast');
     if (!t) { t = document.createElement('div'); t.className = 'module-toast'; document.body.appendChild(t); }
@@ -75,7 +91,7 @@ function card(c) {
     const statusLabel = labelStatus(c.status);
     const podeConversar = !['concluido', 'cancelado', 'encerrado'].includes(c.status);
     return `<article class="module-card contract-card ${c.papel === 'cliente' ? 'is-client' : 'is-freelancer'}">
-      <img class="module-card-img" src="${c.imagemServico || '../assets/img/servicos/servico_padrao.svg'}" onerror="this.src='../assets/img/servicos/servico_padrao.svg'" alt="">
+      <img class="module-card-img" loading="lazy" decoding="async" src="${c.imagemServico || '../assets/img/servicos/servico_padrao.svg'}" onerror="this.src='../assets/img/servicos/servico_padrao.svg'" alt="">
       <div class="module-card-body">
         <div class="contract-title-row">
           <h3>${esc(c.nomeServico)}</h3>
@@ -241,6 +257,8 @@ function actionsFor(c) {
   function esc(str) {
     return String(str ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   }
+
+  if (veioDoSinoContratos) await limparNotificacoesDeContratos();
 
   load();
 });

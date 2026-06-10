@@ -15,13 +15,16 @@ const categoriasPadrao = [
 ];
 
 async function garantirCategorias() {
-  for (const categoria of categoriasPadrao) {
-    await Categoria.updateOne(
-      { legacyId: categoria.legacyId },
-      { $setOnInsert: categoria },
-      { upsert: true }
-    );
-  }
+  await Categoria.bulkWrite(
+    categoriasPadrao.map((categoria) => ({
+      updateOne: {
+        filter: { legacyId: categoria.legacyId },
+        update: { $setOnInsert: categoria },
+        upsert: true
+      }
+    })),
+    { ordered: false }
+  );
 }
 
 async function connectDatabase() {

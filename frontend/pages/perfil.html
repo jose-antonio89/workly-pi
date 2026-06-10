@@ -5,15 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Workly - Perfil do Freelancer</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/material-icons/4.0.0/iconfont/material-icons.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.css">
     <link rel="stylesheet" href="../assets/css/perfil.css">
     <link rel="stylesheet" href="../assets/css/comum.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/theme-global.css">
 </head>
 <body>
@@ -488,7 +485,7 @@
           <h2>Alterar foto de perfil</h2>
           <p class="photo-modal-description">Escolha uma imagem, ajuste o enquadramento e salve sua nova foto.</p>
 
-          <form id="update-photo-form" class="crop-photo-form">
+          <form id="update-photo-form" class="crop-photo-form" novalidate>
               <div class="photo-picker-empty" id="photo-picker-empty">
                   <div class="photo-picker-icon">
                       <i class="fas fa-image"></i>
@@ -505,7 +502,7 @@
 
                   <div class="cropper-controls">
                       <label for="photo-zoom">Zoom</label>
-                      <input type="range" id="photo-zoom" min="1" max="3" step="0.01" value="1">
+                      <input type="range" id="photo-zoom" min="1" max="3" step="any" value="1">
                       <button type="button" id="reset-photo-crop" class="btn-reset-crop">Centralizar</button>
                   </div>
 

@@ -3,125 +3,202 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Criar anúncio - Workly</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="../assets/css/inicio.css">
-  <link rel="stylesheet" href="../assets/css/anuncio.css">
   <link rel="stylesheet" href="../assets/css/comum.css">
+  <link rel="stylesheet" href="../assets/css/anuncio.css">
+  <link rel="stylesheet" href="../assets/css/theme-global.css">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <title>Anuncio - Workly</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../assets/css/theme-global.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
 <body>
   <header></header>
 
-      
-    <main class="create-ad-container">
-        <h1 class="page-title">Criar Novo Anúncio</h1>
-        
-        <form class="ad-form">
-            <!-- Imagem de Capa -->
-            <section class="form-section">
-                <h2 class="section-title">Selecionar Imagem da Capa <span class="optional">opcional</span></h2>
-                <div class="cover-image-upload">
-                    <div class="upload-area" id="uploadArea">
-                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
-                        <p>Arraste e solte uma imagem ou clique para selecionar</p>
-                        <input type="file" id="coverImage" accept="image/*" name="imagem_servico">
-                    </div>
-                    <div class="image-preview default-preview" id="imagePreview"><img src="../assets/img/servicos/servico_padrao.svg" alt="Capa padrão do serviço"></div>
-                </div>
-            </section>
+  <main class="create-ad-page">
+    <section class="create-ad-hero">
+      <span class="create-ad-eyebrow"><i class="fas fa-plus-circle"></i> Novo serviço</span>
+      <h1 class="page-title">Criar anúncio</h1>
+      <p>Cadastre um serviço com título, categoria, descrição, entregáveis, capa e preço.</p>
+    </section>
 
-            <!--ESCOLHA DO GENERO-->
-            <section class="form-section">
-            <h2 class="section-title">Categoria do Anúncio <span class="required">*</span></h2>
-                    <select id="genero_servico" name="genero_id" required class="genero">
-                        <option value="">Selecione...</option>
-                        <option value="1">Design</option>
-                        <option value="2">Programação</option>
-                        <option value="3">Video/Edição</option>
-                        <option value="4">Inteligência Artificial</option>
-                        <option value="5">Escrita/Tradução</option>
-                        <option value="6">Fotografia</option>
-                        <option value="7">Áudio/Música</option>
-                    </select>
-            </section>
-
-            <!-- Nome do anuncio-->
-            <section class="form-section">
-                <h2 class="section-title">Nome do Anúncio <span class="required">*</span></h2>
-                <div class="form-group">
-                    <textarea name="nome" id="adDescription" placeholder="Aqui você escreve o ponto principal do seu anúncio (mínimo 10 caracteres)" required minlength="10" maxlength="50"></textarea>
-                    <div class="char-counter"><span id="charCount">0</span>/50</div>
-                </div>
-            </section>
-
-            <!-- descrição do Serviço -->
-            <section class="form-section">
-                <h2 class="section-title">Descrição do Serviço <span class="required">*</span></h2>
-                <div class="form-group">
-                    <textarea name="descricao" id="serviceDetails" placeholder="Descreva detalhadamente o que você vai oferecer, incluindo detalhes, prazos, materiais necessários, possíveis adicionais etc... (mínimo 50 caracteres)" required minlength="50" maxlength="150"></textarea>
-                    <div class="tips">
-                        <p><i class="fas fa-lightbulb"></i> Dica: Liste os benefícios e diferenciais do seu serviço</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Preço -->
-            <section class="form-section">
-                <h2 class="section-title">Preço do Serviço</h2>
-                <div class="price-input">
-                    <span class="currency">R$</span>
-                    <input name="preco" type="number" id="servicePrice" placeholder="5000" min="20" step="0.01">
-                </div>
-                <div class="price-options">
-                    <label><input type="checkbox" name="priceNegotiable"> Preço negociável</label>
-                    <label><input type="checkbox" name="priceByContact"> Valor a combinar</label>
-                </div>
-            </section>
-
-            <!-- Botão de envio -->
-            <div class="form-actions">
-                <button type="submit" class="submit-btn">Publicar Anúncio</button>
-                <button type="button" class="draft-btn">Salvar como Rascunho</button>
+    <form class="ad-form ad-layout" novalidate>
+      <div class="create-ad-main">
+        <section class="form-section">
+          <div class="section-heading-row">
+            <span class="section-number">1</span>
+            <div>
+              <h2 class="section-title">Informações principais</h2>
+              <p>Use um título direto e escolha a categoria correta para o serviço aparecer no lugar certo.</p>
             </div>
-        </form>
-    </main>
-    
-    <!------------- FOOTER --------------->
-      <footer>
+          </div>
+
+          <div class="form-grid two-cols">
+            <div class="form-field">
+              <label for="genero_servico">Categoria <span class="required">*</span></label>
+              <select id="genero_servico" name="genero_id" required class="genero">
+                <option value="">Selecione...</option>
+                <option value="1">Design</option>
+                <option value="2">Programação</option>
+                <option value="3">Vídeo/Edição</option>
+                <option value="4">Inteligência Artificial</option>
+                <option value="5">Tradução/Escritor</option>
+                <option value="6">Fotografia</option>
+                <option value="7">Áudio/Música</option>
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label for="adDescription">Título do anúncio <span class="required">*</span></label>
+              <div class="input-with-counter">
+                <input name="nome" id="adDescription" type="text" placeholder="Ex: Pacote de cortes para podcast" required minlength="10" maxlength="70" autocomplete="off">
+                <div class="char-counter" id="charCount">0/70</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <div class="section-heading-row">
+            <span class="section-number">2</span>
+            <div>
+              <h2 class="section-title">Descrição</h2>
+              <p>Explique o que você faz, para quem é o serviço e qual resultado o cliente recebe.</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <textarea name="descricao" id="serviceDetails" placeholder="Ex: Cortes verticais com legenda, cortes secos, trilha leve e acabamento para TikTok, Reels e Shorts." required minlength="50" maxlength="420"></textarea>
+            <div class="field-footer">
+              <small><i class="fas fa-lightbulb"></i> Evite texto genérico. Fale do resultado final.</small>
+              <span id="detailsCount">0/420</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <div class="section-heading-row">
+            <span class="section-number">3</span>
+            <div>
+              <h2 class="section-title">Entregáveis</h2>
+              <p>Descreva exatamente o que está incluso no serviço e quais informações o cliente precisa enviar.</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <textarea name="extra" id="serviceExtra" placeholder="Ex: Inclui até 5 cortes, legenda básica, exportação em 1080x1920 e 1 rodada de ajustes. O cliente deve enviar o vídeo bruto e referências de estilo." maxlength="700"></textarea>
+            <div class="field-footer">
+              <small><i class="fas fa-circle-info"></i> Esse texto aparece na página de detalhes do serviço.</small>
+              <span id="extraCount">0/700</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section price-section">
+          <div class="section-heading-row">
+            <span class="section-number">4</span>
+            <div>
+              <h2 class="section-title">Preço</h2>
+              <p>Use valor fixo quando o pacote já estiver definido. Use valor a combinar quando depender do escopo.</p>
+            </div>
+          </div>
+
+          <div class="price-row">
+            <label class="price-input" for="servicePrice">
+              <span class="currency">R$</span>
+              <input name="preco" type="number" id="servicePrice" placeholder="680" min="20" step="0.01">
+            </label>
+
+            <label class="price-choice">
+              <input type="checkbox" name="valorCombinar">
+              <span>
+                <strong>Valor a combinar</strong>
+                <small>O cliente conversa antes de fechar o valor.</small>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <div class="form-actions">
+          <button type="button" class="draft-btn"><i class="fas fa-arrow-left"></i> Cancelar</button>
+          <button type="submit" class="submit-btn"><i class="fas fa-paper-plane"></i> Publicar anúncio</button>
+        </div>
+      </div>
+
+      <aside class="create-ad-side">
+        <section class="side-card cover-card">
+          <div class="side-card-title">
+            <i class="fas fa-image"></i>
+            <div>
+              <h2>Capa do serviço</h2>
+              <p>Opcional</p>
+            </div>
+          </div>
+
+          <div class="cover-image-upload">
+            <div class="image-preview default-preview" id="imagePreview">
+              <img src="../assets/img/servicos/servico_padrao.svg" alt="Capa padrão do serviço">
+            </div>
+
+            <div class="upload-area" id="uploadArea">
+              <i class="fas fa-cloud-upload-alt upload-icon"></i>
+              <span>Escolher imagem</span>
+              <small>PNG, JPG ou WEBP</small>
+              <input type="file" id="coverImage" accept="image/*" name="imagem_servico">
+            </div>
+          </div>
+        </section>
+
+        <section class="side-card preview-card" aria-label="Prévia do anúncio">
+          <div class="side-card-title">
+            <i class="fas fa-eye"></i>
+            <div>
+              <h2>Prévia</h2>
+              <p>Como o anúncio começa a aparecer</p>
+            </div>
+          </div>
+
+          <div class="ad-preview-box">
+            <span id="previewCategory">Categoria</span>
+            <h3 id="previewTitle">Título do anúncio</h3>
+            <p id="previewDescription">A descrição aparece aqui conforme você escreve.</p>
+            <strong id="previewPrice">Defina o preço</strong>
+          </div>
+        </section>
+
+      </aside>
+    </form>
+  </main>
+
+  <footer>
     <div class="footer-content">
-        <div class="footer-section">
-            <h3>Sobre a Workly</h3>
-            <p>Conectando empresas aos melhores freelancers desde 2025.</p>
+      <div class="footer-section">
+        <h3>Sobre a Workly</h3>
+        <p>Conectando empresas aos melhores freelancers desde 2025.</p>
+      </div>
+      <div class="footer-section">
+        <h3>Links Rápidos</h3>
+        <ul>
+          <li><a href="#">Termos de Serviço</a></li>
+          <li><a href="#">Política de Privacidade</a></li>
+          <li><a href="#">Contato</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h3>Redes Sociais</h3>
+        <div class="social-icons">
+          <a href="#"><i class="fab fa-facebook"></i></a>
+          <a href="#"><i class="fab fa-twitter"></i></a>
+          <a href="#"><i class="fab fa-instagram"></i></a>
+          <a href="#"><i class="fab fa-linkedin"></i></a>
         </div>
-        <div class="footer-section">
-            <h3>Links Rápidos</h3>
-            <ul>
-                <li><a href="#">Termos de Serviço</a></li>
-                <li><a href="#">Política de Privacidade</a></li>
-                <li><a href="#">Contato</a></li>
-            </ul>
-        </div>
-        <div class="footer-section">
-            <h3>Redes Sociais</h3>
-            <div class="social-icons">
-                <a href="#"><i class="fab fa-facebook"></i></a>
-                <a href="#"><i class="fab fa-twitter"></i></a>
-                <a href="#"><i class="fab fa-instagram"></i></a>
-                <a href="#"><i class="fab fa-linkedin"></i></a>
-            </div>
-        </div>
+      </div>
     </div>
-    <div class="footer-bottom">
-        &copy; 2025 Workly. Todos os direitos reservados.
-    </div>
-</footer>
-    <script src="../assets/js/config.js"></script>
-<script src="../assets/js/comum.js"></script>
-<script src="../assets/js/anuncio.js"></script>
+    <div class="footer-bottom">&copy; 2025 Workly. Todos os direitos reservados.</div>
+  </footer>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/comum.js"></script>
+  <script src="../assets/js/anuncio.js"></script>
 </body>
 </html>

@@ -2,8 +2,7 @@
 
 /*
   workly theme-global.css
-  tema centralizado para modo claro/escuro, navbar, cards, formulários e modais.
-  mantenha ajustes novos de tema neste arquivo para evitar regras espalhadas.
+  tema centralizado para modo claro/escuro, navbar, cards, formulários e modais
 */
 
 :root {
@@ -279,18 +278,6 @@ body.dark-mode .activity-item {
   border-color: var(--wk-dark-border) !important;
 }
 
-body.dark-mode .submit-button,
-body.dark-mode .submit-btn,
-body.dark-mode .btn-primary,
-body.dark-mode .btn-purchase,
-body.dark-mode .btn-save,
-body.dark-mode .see-more-btn,
-body.dark-mode .add-service-btn,
-body.dark-mode .upload-btn,
-body.dark-mode .reply-btn,
-body.dark-mode .page-link.active,
-body.dark-mode .profile-tab.active,
-body.dark-mode 
 body {
   background: radial-gradient(ellipse at 10% 0%, rgba(4, 191, 85, 0.10), transparent 32%),
     radial-gradient(ellipse at 90% 0%, rgba(33, 150, 243, 0.08), transparent 28%),
@@ -3548,4 +3535,30 @@ body.dark-mode .filter-field select option {
 body.dark-mode .filter-field select option:checked {
   color: #86efac !important;
   background: #162236 !important;
+}
+
+/* Logo: no tema claro fica normal; no tema escuro recebe glow via CSS. */
+.workly-logo-switch {
+  filter: none !important;
+  transition: filter 0.22s ease, transform 0.22s ease;
+}
+
+body.dark-mode .workly-logo-switch,
+html.dark-mode-enabled .workly-logo-switch,
+body.dark-mode .wk-site-header .wk-brand-logo.workly-logo-switch,
+html.dark-mode-enabled .wk-site-header .wk-brand-logo.workly-logo-switch {
+  filter:
+    drop-shadow(0 0 3px rgba(0, 255, 123, 0.95))
+    drop-shadow(0 0 8px rgba(0, 255, 123, 0.72))
+    drop-shadow(0 0 16px rgba(0, 255, 123, 0.48))
+    drop-shadow(0 0 28px rgba(0, 255, 123, 0.28)) !important;
+}
+
+body.dark-mode .workly-logo-switch:hover,
+html.dark-mode-enabled .workly-logo-switch:hover {
+  filter:
+    drop-shadow(0 0 4px rgba(0, 255, 123, 1))
+    drop-shadow(0 0 11px rgba(0, 255, 123, 0.82))
+    drop-shadow(0 0 22px rgba(0, 255, 123, 0.55))
+    drop-shadow(0 0 36px rgba(0, 255, 123, 0.32)) !important;
 }

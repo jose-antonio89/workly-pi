@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const $ = (s) => document.querySelector(s);
     const $$ = (s) => document.querySelectorAll(s);
     const selectors = {
-        title: $('.service-title'), price: $('.service-price'), summary: $('.service-summary'), mainImage: $('.service-main-image'),
+        title: $('.service-title'), price: $('.service-price'), priceHelper: $('.price-helper'), summary: $('.service-summary'), mainImage: $('.service-main-image'),
         categoryBadge: $('.service-category-badge'), freelancerAvatar: $('.freelancer-avatar-small'), freelancerName: $('.freelancer-name'),
         freelancerSubtitle: $('.freelancer-subtitle'), freelancerRating: $('.freelancer-rating'), description: $('.service-description'),
         extraSection: $('.service-extra-section'), extra: $('.service-extra'), infoCategory: $('.info-category'), infoCreated: $('.info-created'),
@@ -29,14 +29,17 @@ document.addEventListener('DOMContentLoaded', async function () {
         const category = service.nomeCategoria || 'Categoria não informada';
         const seller = service.nomeFreelancer || 'Freelancer Workly';
         const photo = service.fotoPerfil || window.Workly.defaultProfileImage;
-        setText(selectors.title, name); setText(selectors.price, formatServicePrice(raw, service));
-        setText(selectors.summary, `${seller} oferece este serviço em ${category}. Veja a descrição completa, preço e informações antes de iniciar a contratação.`);
-        setText(selectors.freelancerName, seller); setText(selectors.freelancerSubtitle, `Especialista em ${category}`); setRating(raw, service);
-        setText(selectors.description, raw.descricao || service.descricao || 'O freelancer ainda não adicionou uma descrição para este serviço.');
+        const description = raw.descricao || service.descricao || 'O freelancer ainda não adicionou uma descrição para este serviço.';
+        setText(selectors.title, name);
+        setText(selectors.price, formatServicePrice(raw, service));
+        setText(selectors.priceHelper, (raw.valorCombinar || service.valorCombinar) ? 'Envie uma proposta para combinar escopo, prazo e valor.' : 'Confirme o escopo antes de finalizar a contratação.');
+        setText(selectors.summary, buildServiceSummary(description, seller, category));
+        setText(selectors.freelancerName, seller); setText(selectors.freelancerSubtitle, category); setRating(raw, service);
+        setText(selectors.description, description);
         setText(selectors.infoCategory, category); setText(selectors.infoCreated, window.Workly.formatServiceDateTime(service)); setText(selectors.infoSeller, seller);
         setText(selectors.sellerName, seller); setText(selectors.sellerRole, `Freelancer de ${category}`); setText(selectors.sellerCategory, category);
         setText(selectors.sellerRating, serviceRatingText(raw, service));
-        if (selectors.mainImage) { selectors.mainImage.src = service.imagemServico || '../assets/img/servicos/servico_padrao.svg'; selectors.mainImage.onerror = () => selectors.mainImage.src = '../assets/img/servicos/servico_padrao.svg'; }
+        if (selectors.mainImage) { selectors.mainImage.src = service.imagemServico || '../assets/img/servicos/servico_padrao.svg'; selectors.mainImage.alt = `Imagem do serviço ${name}`; selectors.mainImage.onerror = () => selectors.mainImage.src = '../assets/img/servicos/servico_padrao.svg'; }
         [selectors.freelancerAvatar, selectors.sellerAvatar].forEach(img => { if (img) { img.src = photo; img.onerror = () => img.src = window.Workly.defaultProfileImage; } });
         if (selectors.categoryBadge && service.categoriaId) { const a = document.createElement('a'); a.href = `categorias.html?id=${encodeURIComponent(service.categoriaId)}`; a.textContent = category; a.className = 'service-category-badge'; selectors.categoryBadge.replaceWith(a); selectors.categoryBadge = a; }
         if ((raw.extra || service.extra) && selectors.extraSection && selectors.extra) { selectors.extraSection.hidden = false; setText(selectors.extra, raw.extra || service.extra); }
@@ -48,7 +51,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     function bindActions(service, raw = {}, currentUser) {
         const isOwner = currentUser && String(currentUser.idUsuario) === String(service.idUsuario);
-        const isProposalService = Boolean(service.precoNegociavel || service.valorCombinar || raw.precoNegociavel || raw.valorCombinar);
+        const isProposalService = Boolean(service.valorCombinar || raw.valorCombinar);
         selectors.purchaseBtns.forEach(btn => {
             btn.innerHTML = isProposalService
                 ? '<i class="fas fa-paper-plane"></i> Enviar proposta'
@@ -58,7 +61,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         selectors.purchaseBtns.forEach(btn => btn.addEventListener('click', async () => {
             if (!currentUser) { showDetailToast('Login necessário', 'Entre na sua conta para continuar.', 'info'); setTimeout(() => location.href='login.html', 900); return; }
             if (isOwner) return showDetailToast('Este serviço é seu', 'Use o perfil para gerenciar o anúncio.', 'info');
-            if (service.precoNegociavel || service.valorCombinar || raw.precoNegociavel || raw.valorCombinar) {
+            if (service.valorCombinar || raw.valorCombinar) {
                 location.href = `negociar-servico.html?id=${encodeURIComponent(service.idServico || serviceId)}`;
                 return;
             }
@@ -98,7 +101,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         finally { selectors.favoriteBtns.forEach(btn => btn.disabled = false); }
     }
 
-    function formatServicePrice(raw={}, service={}) { if (raw.valorCombinar || service.valorCombinar) return 'Valor a combinar'; const preco = raw.preco ?? service.preco; if (raw.precoNegociavel || service.precoNegociavel) return `A partir de ${window.Workly.formatCurrency(preco || 0)}`; return window.Workly.formatCurrency(preco || 0); }
+    function formatServicePrice(raw={}, service={}) { if (raw.valorCombinar || service.valorCombinar) return 'Valor a combinar'; const preco = raw.preco ?? service.preco; return window.Workly.formatCurrency(preco || 0); }
 
     function freelancerRatingData(raw={}, service={}) { const m = raw.avaliacaoMediaFreelancer ?? raw.avaliacao_media_freelancer ?? service.avaliacaoMediaFreelancer ?? 0; const t = raw.totalAvaliacoesFreelancer ?? raw.total_avaliacoes_freelancer ?? service.totalAvaliacoesFreelancer ?? 0; return { media:Number(m)||0, total:Number(t)||0 }; }
 
@@ -110,7 +113,13 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     function setText(el, val) { if (el) el.textContent = val || '--'; }
 
-    function formatDate(v) { const d = new Date(v); return v && !isNaN(d) ? d.toLocaleDateString('pt-BR') : 'Recentemente'; }
+    function buildServiceSummary(description, seller, category) {
+        const cleanDescription = String(description || '').replace(/\s+/g, ' ').trim();
+        if (cleanDescription && !cleanDescription.startsWith('O freelancer ainda')) {
+            return cleanDescription.length > 170 ? cleanDescription.slice(0, 167).trim() + '...' : cleanDescription;
+        }
+        return `${seller} publicou este serviço na categoria ${category}. Confira a descrição e combine os detalhes antes de contratar.`;
+    }
 
     async function copyCurrentLink() { try { await navigator.clipboard.writeText(location.href); showDetailToast('Link copiado', 'Link copiado para a área de transferência.', 'success'); } catch { showDetailToast('Não foi possível copiar', 'Copie pela barra do navegador.', 'info'); } }
 

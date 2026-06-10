@@ -1,10 +1,8 @@
-
 async function fetchAndDisplayUsuario() {
-    return window.Workly.fetchCurrentUser(true);
+    return window.Workly.fetchCurrentUser(false);
 }
 
 // monta a navbar em js pra todas as páginas ficarem com o mesmo cabeçalho.
-// monta o header padrão usado pelas páginas.
 function renderizarCabecalho(user) {
     const currentPage = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
     const params = new URLSearchParams(window.location.search);
@@ -26,10 +24,13 @@ function renderizarCabecalho(user) {
     const safeName = user?.nome ? String(user.nome).split(' ')[0] : '';
     const profilePhoto = user?.fotoPerfil || window.Workly?.defaultProfileImage || '../assets/img/perfis/perfil_padrao.svg';
 
-    const navLinks = user ? `
-        <a href="index.html" class="wk-menu-link ${currentPage === 'index.html' ? 'active' : ''}">Home</a>
-        <a href="sobre.html" class="wk-menu-link ${currentPage === 'sobre.html' ? 'active' : ''}">Sobre Nós</a>
-    ` : `
+    // Agora usa a mesma logo nos dois temas.
+    // O brilho do modo escuro vem pelo CSS em .workly-logo-switch.
+    // Se quiser usar SVG, troque só este caminho:
+    // const logoBase = '../assets/img/logo.svg';
+    const logoBase = '../assets/img/logo.png';
+
+    const navLinks = `
         <a href="index.html" class="wk-menu-link ${currentPage === 'index.html' ? 'active' : ''}">Home</a>
         <a href="sobre.html" class="wk-menu-link ${currentPage === 'sobre.html' ? 'active' : ''}">Sobre Nós</a>
     `;
@@ -41,14 +42,17 @@ function renderizarCabecalho(user) {
                     <i class="fas fa-bell"></i>
                     <span class="wk-notification-badge" id="notificationBadge" hidden>0</span>
                 </button>
+
                 <div class="wk-notification-dropdown" id="notificationDropdown">
                     <div class="wk-notification-head">
                         <strong>Notificações</strong>
                         <button type="button" id="markNotificationsRead">Marcar lidas</button>
                     </div>
+
                     <div class="wk-notification-list" id="notificationList">
                         <div class="wk-notification-empty">Carregando notificações...</div>
                     </div>
+
                     <a class="wk-notification-footer" href="mensagens.html">Abrir central de mensagens</a>
                 </div>
             </div>
@@ -59,6 +63,7 @@ function renderizarCabecalho(user) {
                     <img src="${profilePhoto}" class="wk-profile-avatar" alt="Perfil" onerror="this.src='../assets/img/perfis/perfil_padrao.svg'">
                     <i class="fas fa-chevron-down wk-profile-chevron"></i>
                 </button>
+
                 <div class="wk-dropdown" id="dropdownMenu">
                     <a href="perfil.html"><i class="fas fa-user"></i> Perfil</a>
                     <a href="favoritos.html"><i class="fas fa-heart"></i> Favoritos</a>
@@ -87,17 +92,31 @@ function renderizarCabecalho(user) {
     `;
 
     const header = document.querySelector('header');
+
     if (header) {
         header.className = 'wk-site-header';
         header.innerHTML = `
             <div class="wk-navbar">
                 <div class="wk-navbar-shell">
                     <a href="index.html" class="wk-brand" aria-label="Ir para a página inicial">
-                        <img class="wk-brand-logo" src="../assets/img/logo.png" alt="Workly">
+                        <img
+                            class="wk-brand-logo workly-logo-switch"
+                            src="${logoBase}"
+                            data-logo-light="${logoBase}"
+                            data-logo-dark="${logoBase}"
+                            alt="Workly"
+                        >
                     </a>
 
                     <form class="wk-search-form" id="wkSearchForm" role="search">
-                        <input type="search" class="wk-search-input" id="wkSearchInput" placeholder="O que você está buscando?" autocomplete="off">
+                        <input
+                            type="search"
+                            class="wk-search-input"
+                            id="wkSearchInput"
+                            placeholder="O que você está buscando?"
+                            autocomplete="off"
+                        >
+
                         <button class="wk-search-button" type="submit" aria-label="Buscar">
                             <i class="fas fa-search"></i>
                         </button>
@@ -110,6 +129,7 @@ function renderizarCabecalho(user) {
                     ${profileArea}
                 </div>
             </div>
+
             ${categoriesHTML}
         `;
     }
@@ -120,7 +140,6 @@ function renderizarCabecalho(user) {
     const searchForm = document.getElementById('wkSearchForm');
     const searchInput = document.getElementById('wkSearchInput');
 
-    // dropdown do perfil: abre no clique e fecha quando clicar fora.
     if (profileBall && dropdownMenu) {
         profileBall.addEventListener('click', (event) => {
             event.stopPropagation();
@@ -132,6 +151,7 @@ function renderizarCabecalho(user) {
             dropdownMenu.classList.remove('show');
             profileBall.classList.remove('active');
         });
+
         dropdownMenu.addEventListener('click', (event) => event.stopPropagation());
     }
 
@@ -143,9 +163,16 @@ function renderizarCabecalho(user) {
 
     function formatNotificationDate(value) {
         if (!value) return '';
+
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return '';
-        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+        return date.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     }
 
     function escapeHtml(value = '') {
@@ -157,25 +184,50 @@ function renderizarCabecalho(user) {
             .replace(/'/g, '&#039;');
     }
 
-    // carrega o sino do topo.
-// mensagem nova aparece como resumo, não como várias notificações duplicadas.
-async function loadNotifications() {
+    async function loadNotificationCounts() {
+        if (!notificationBell || !window.Workly?.getToken?.()) return;
+        if (document.visibilityState === 'hidden') return;
+
+        try {
+            const [notificacoesResponse, mensagensResponse] = await Promise.all([
+                window.Workly.apiFetch('/api/notificacoes/nao-lidas').catch(() => ({ dados: { naoLidas: 0 } })),
+                window.Workly.apiFetch('/api/mensagens/nao-lidas').catch(() => ({ dados: { naoLidas: 0 } }))
+            ]);
+
+            const naoLidasNotificacoes = Number(notificacoesResponse.dados?.naoLidas || notificacoesResponse.naoLidas || 0);
+            const naoLidasMensagens = Number(mensagensResponse.dados?.naoLidas || mensagensResponse.naoLidas || 0);
+            const totalNaoLidas = naoLidasNotificacoes + naoLidasMensagens;
+
+            if (notificationBadge) {
+                if (totalNaoLidas > 0) {
+                    notificationBadge.textContent = totalNaoLidas > 99 ? '99+' : String(totalNaoLidas);
+                    notificationBadge.hidden = false;
+                } else {
+                    notificationBadge.textContent = '';
+                    notificationBadge.hidden = true;
+                }
+            }
+        } catch (error) {
+            console.error('Erro ao carregar contadores:', error);
+        }
+    }
+
+    if (window.Workly) {
+        window.Workly.refreshNotificationBadge = loadNotificationCounts;
+    }
+
+    async function loadNotifications() {
         if (!notificationBell || !window.Workly?.getToken?.()) return;
 
         try {
             const [notificacoesResponse, mensagensResponse] = await Promise.all([
-                window.Workly.apiFetch('/api/notificacoes?limit=8').catch(() => ({ dados: [] })),
+                window.Workly.apiFetch('/api/notificacoes?lida=false&limit=8&excluirMensagens=true').catch(() => ({ dados: [] })),
                 window.Workly.apiFetch('/api/mensagens/nao-lidas').catch(() => ({ dados: { naoLidas: 0 } }))
             ]);
 
             const todasNotificacoes = notificacoesResponse.dados || [];
-            const notificacoesNaoLidas = todasNotificacoes.filter(item => !item.lida);
             const naoLidasMensagens = Number(mensagensResponse.dados?.naoLidas || mensagensResponse.naoLidas || 0);
-
-            // evita duplicidade: quando existe contador de mensagens não lidas,
-            // não mostra cada "mensagem_nova" separada no dropdown.
-            const notificacoesVisiveis = notificacoesNaoLidas.filter(item => item.tipo !== 'mensagem_nova');
-
+            const notificacoesVisiveis = todasNotificacoes.filter(item => item.tipo !== 'mensagem_nova');
             const totalNaoLidas = notificacoesVisiveis.length + naoLidasMensagens;
 
             if (notificationBadge) {
@@ -190,7 +242,7 @@ async function loadNotifications() {
 
             if (notificationList) {
                 const mensagemResumo = naoLidasMensagens > 0
-                    ? `<a class="wk-notification-item is-message unread" href="mensagens.html">
+                    ? `<a class="wk-notification-item is-message unread" href="mensagens.html?notificacoes=mensagens" data-notification-context="mensagens">
                         <span class="wk-notification-icon"><i class="fas fa-comments"></i></span>
                         <span>
                             <strong>${naoLidasMensagens} mensagem${naoLidasMensagens > 1 ? 's' : ''} não lida${naoLidasMensagens > 1 ? 's' : ''}</strong>
@@ -200,9 +252,17 @@ async function loadNotifications() {
                     : '';
 
                 const itens = notificacoesVisiveis.map(item => {
-                    const destino = item.tipo === 'mensagem_nova' ? 'mensagens.html' : (item.tipoReferencia === 'contrato' ? 'contratos.html' : 'perfil.html');
-                    const icon = item.tipo === 'mensagem_nova' ? 'fa-comments' : item.tipo === 'contrato_novo' || item.tipo === 'proposta_nova' ? 'fa-briefcase' : 'fa-bell';
-                    return `<a class="wk-notification-item unread" href="${destino}">
+                    const notificationId = escapeHtml(item._id || item.id || '');
+                    const referenciaId = escapeHtml(item.referenciaId || '');
+                    const contexto = item.tipoReferencia === 'contrato' ? 'contratos' : 'notificacao';
+                    const destino = item.tipoReferencia === 'contrato'
+                        ? `contratos.html?notificacoes=contratos${referenciaId ? `&contrato=${encodeURIComponent(referenciaId)}` : ''}`
+                        : 'perfil.html';
+                    const icon = item.tipo === 'contrato_novo' || item.tipo === 'proposta_nova'
+                        ? 'fa-briefcase'
+                        : 'fa-bell';
+
+                    return `<a class="wk-notification-item unread" href="${destino}" data-notification-id="${notificationId}" data-notification-context="${contexto}" data-reference-id="${referenciaId}">
                         <span class="wk-notification-icon"><i class="fas ${icon}"></i></span>
                         <span>
                             <strong>${escapeHtml(item.titulo || 'Notificação')}</strong>
@@ -215,9 +275,45 @@ async function loadNotifications() {
                 notificationList.innerHTML = mensagemResumo || itens
                     ? mensagemResumo + itens
                     : '<div class="wk-notification-empty">Você está em dia. Nenhuma notificação nova.</div>';
+
+                notificationList.querySelectorAll('[data-notification-id], [data-notification-context]').forEach((link) => {
+                    link.addEventListener('click', async (event) => {
+                        if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
+
+                        event.preventDefault();
+
+                        const href = link.getAttribute('href') || '#';
+                        const notificationId = link.dataset.notificationId;
+                        const contexto = link.dataset.notificationContext;
+                        const referenciaId = link.dataset.referenceId;
+
+                        try {
+                            if (notificationId) {
+                                await window.Workly.apiFetch(`/api/notificacoes/${encodeURIComponent(notificationId)}/lida`, { method: 'PATCH' });
+                            }
+
+                            if (contexto === 'mensagens' || contexto === 'contratos') {
+                                await window.Workly.apiFetch('/api/notificacoes/contexto/lidas', {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ contexto, referenciaId: referenciaId || undefined })
+                                });
+                            }
+
+                            await loadNotificationCounts();
+                        } catch (error) {
+                            console.error('Erro ao marcar notificação clicada como lida:', error);
+                        } finally {
+                            window.location.href = href;
+                        }
+                    });
+                });
             }
         } catch (error) {
-            if (notificationList) notificationList.innerHTML = '<div class="wk-notification-empty">Não foi possível carregar notificações.</div>';
+            if (notificationList) {
+                notificationList.innerHTML = '<div class="wk-notification-empty">Não foi possível carregar notificações.</div>';
+            }
+
             console.error('Erro ao carregar notificações:', error);
         }
     }
@@ -225,9 +321,13 @@ async function loadNotifications() {
     if (notificationBell && notificationDropdown) {
         notificationBell.addEventListener('click', async (event) => {
             event.stopPropagation();
+
             notificationDropdown.classList.toggle('show');
             notificationBell.classList.toggle('active', notificationDropdown.classList.contains('show'));
-            if (notificationDropdown.classList.contains('show')) await loadNotifications();
+
+            if (notificationDropdown.classList.contains('show')) {
+                await loadNotifications();
+            }
         });
 
         notificationDropdown.addEventListener('click', (event) => event.stopPropagation());
@@ -237,18 +337,24 @@ async function loadNotifications() {
             notificationBell.classList.remove('active');
         });
 
-        // botão pra limpar tudo que ainda aparece no sino.
-markNotificationsRead?.addEventListener('click', async () => {
+        markNotificationsRead?.addEventListener('click', async () => {
             try {
                 await window.Workly.apiFetch('/api/notificacoes/todas-lidas', { method: 'PATCH' });
                 await loadNotifications();
+                await loadNotificationCounts();
             } catch (error) {
                 console.error('Erro ao marcar notificações como lidas:', error);
             }
         });
 
-        loadNotifications();
-        window.setInterval(loadNotifications, 60000);
+        loadNotificationCounts();
+        window.setInterval(loadNotificationCounts, 120000);
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                loadNotificationCounts();
+            }
+        });
     }
 
     if (logoutBtn) {
@@ -258,12 +364,15 @@ markNotificationsRead?.addEventListener('click', async () => {
         });
     }
 
-    // busca simples: manda o termo pela url para a página de todos os serviços.
     if (searchForm && searchInput) {
         searchForm.addEventListener('submit', (event) => {
             event.preventDefault();
+
             const termo = searchInput.value.trim();
-            const destino = termo ? `todos-servicos.html?q=${encodeURIComponent(termo)}` : 'todos-servicos.html';
+            const destino = termo
+                ? `todos-servicos.html?q=${encodeURIComponent(termo)}`
+                : 'todos-servicos.html';
+
             window.location.href = destino;
         });
     }
@@ -271,5 +380,10 @@ markNotificationsRead?.addEventListener('click', async () => {
 
 document.addEventListener('DOMContentLoaded', async () => {
     const usuario = await fetchAndDisplayUsuario();
+
     renderizarCabecalho(usuario);
+
+    if (typeof window.Workly?.updateThemeLogos === 'function') {
+        window.Workly.updateThemeLogos();
+    }
 });
