@@ -81,7 +81,7 @@ test('profile services use official endpoints, bearer, partial fields and crop u
   );
   assert.equal(values.get('token'), 'qa');
 });
-test('dashboard fallback preserves confirmed-value statuses and uses useful official dashboard', () => {
+test('dashboard fallback excludes pending contracts and uses useful official dashboard', () => {
   const leads = [
     {
       tipoContratacao: 'combinar',
@@ -91,7 +91,7 @@ test('dashboard fallback preserves confirmed-value statuses and uses useful offi
     },
     { tipoContratacao: 'fixo', status: 'pendente', preco: 50, createdAt: new Date().toISOString() }
   ];
-  assert.equal(mergeDashboardWithFallback({}, [], [], leads).summary.valorTotal, 50);
+  assert.equal(mergeDashboardWithFallback({}, [], [], leads).summary.valorTotal, 0);
   const backend = { summary: { valorTotal: 123 }, recentActivities: [{ titulo: 'API' }] };
   assert.equal(mergeDashboardWithFallback(backend, [], [], leads).summary.valorTotal, 123);
   assert.equal(formatContractStatus('encerrado'), 'Concluído');

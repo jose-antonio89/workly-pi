@@ -158,5 +158,25 @@
     "file": "Chart-LICENSE.md",
     "source": "https://raw.githubusercontent.com/chartjs/Chart.js/v2.9.4/LICENSE.md",
     "sha256": "7b43caae91f31b18dc81fae6e0f7aa1acbecaa6d84e3249905cbe15308307d67"
+  },
+  {
+    "file": "bricolage.css",
+    "source": "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap (local rewrite)",
+    "sha256": "3d226d0346251ad20d2f21257f90c0b9a9ecccbd32eb131c491c67209dcaa678"
+  },
+  {
+    "file": "fonts/bricolage-grotesque-latin.woff2",
+    "source": "https://fonts.gstatic.com/s/bricolagegrotesque/v9/3y9K6as8bTXq_nANBjzKo3IeZx8z6up5BeSl9D4dj_x9PpZBMlGIInE.woff2",
+    "sha256": "a79fdb52d4a5c76552452f69202add96e287401fff03d3e8c0e38b4dcb5a99cd"
+  },
+  {
+    "file": "fonts/bricolage-grotesque-latin-ext.woff2",
+    "source": "https://fonts.gstatic.com/s/bricolagegrotesque/v9/3y9K6as8bTXq_nANBjzKo3IeZx8z6up5BeSl9D4dj_x9PpZBMlGGInHEVA.woff2",
+    "sha256": "776f6dcaf03636cd69a5802c94808cc8896c0a66c8e9ce0fe147231b6ee01957"
+  },
+  {
+    "file": "Bricolage-Grotesque-OFL.txt",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/bricolagegrotesque/OFL.txt",
+    "sha256": "4b5a7d8f37f5602621c8a8d7358a6a2e71317e6c231c661e15aef0275d3e07ba"
   }
 ]

@@ -5,6 +5,32 @@ import { defaultProfileImage, formatCurrency } from '../../services/catalogServi
 import { formatContractStatus, mergeDashboardWithFallback } from '../../services/profileDashboard';
 import { panel, emptyPanel } from './ProfileHeader';
 import { salesConfig, revenueConfig, viewsConfig } from './profileChartConfig';
+import { buttonStyles } from '../ui/Button';
+
+// Charts read the surrounding theme so ticks, legends and grid stay legible on both grounds.
+function themed(config, dark) {
+  const ink = dark ? '#a3ada7' : '#5e6862';
+  const grid = dark ? 'rgba(236,235,229,0.08)' : 'rgba(22,33,27,0.08)';
+  const options = config.options || {};
+  if (options.legend?.labels) options.legend.labels.fontColor = ink;
+  for (const axis of [...(options.scales?.xAxes || []), ...(options.scales?.yAxes || [])]) {
+    axis.ticks = { ...(axis.ticks || {}), fontColor: ink };
+    axis.gridLines = { ...(axis.gridLines || {}), color: grid, zeroLineColor: grid };
+  }
+  return config;
+}
+const hasValues = (data) =>
+  (data?.datasets || []).some((set) => (set.data || []).some((value) => Number(value) > 0));
+function ChartEmpty({ icon, message }) {
+  return (
+    <div className="grid h-[220px] place-content-center justify-items-center gap-3 rounded-md border border-dashed border-workly-rule bg-workly-paper px-6 text-center">
+      <span aria-hidden="true" className="grid h-11 w-11 place-items-center rounded-full bg-workly-primary-tint text-workly-primary-ink">
+        <i className={`fas ${icon}`} />
+      </span>
+      <p className="max-w-[34ch] text-sm leading-relaxed text-workly-muted-warm">{message}</p>
+    </div>
+  );
+}
 
 let chartPromise;
 function chartLibrary() {
@@ -32,7 +58,10 @@ function Chart({ id, config, data }) {
     chartLibrary()
       .then((Library) => {
         if (active) {
-          chart = new Library(ref.current.getContext('2d'), config());
+          chart = new Library(
+            ref.current.getContext('2d'),
+            themed(config(), Boolean(ref.current.closest('[data-workly-theme="dark"]')))
+          );
           chart.data = data;
           chart.update();
         }
@@ -46,7 +75,7 @@ function Chart({ id, config, data }) {
     };
   }, [config, data]);
   return (
-    <div className="relative h-[300px] w-full min-w-0">
+    <div className="relative h-[260px] w-full min-w-0">
       <canvas id={id} ref={ref} className="max-w-full" />
       {error && <ErrorState>{error}</ErrorState>}
     </div>
@@ -73,10 +102,13 @@ export default function ProfileDashboard({ data }) {
     distribution = dashboard.revenueDistribution || {},
     weekly = dashboard.weeklyActivity || {},
     summary = dashboard.summary || {};
-  const title =
-    'relative mb-5 pb-2.5 text-[1.3rem] font-bold text-workly-primary after:absolute after:bottom-0 after:left-0 after:h-[3px] after:w-10 after:bg-workly-primary';
+  const title = 'mb-4 flex flex-wrap items-center justify-between gap-3 text-[1.05rem] font-semibold text-workly-ink-warm';
+  const revenue =
+    summary.valorTotal ||
+    (monthly.primaryData || []).reduce((sum, value) => sum + Number(value || 0), 0);
   const stats = [
-    [data.services.length, 'Serviços Publicados'],
+    [formatCurrency(revenue), 'Receita concluída', 'Vendas concluídas como freelancer'],
+    [formatCurrency(summary.gastosTotal || 0), 'Gastos concluídos', 'Compras concluídas como cliente'],
     [
       data.reviewSummary.total
         ? Number(data.reviewSummary.mediaFreelancer || 0)
@@ -86,10 +118,10 @@ export default function ProfileDashboard({ data }) {
           data.reviewSummary.total +
           ')'
         : '--',
-      'Avaliação'
+      'Avaliação',
+      data.reviewSummary.total ? 'Média das avaliações recebidas' : 'Ainda sem avaliações'
     ],
-    [summary.contratos || 0, 'Contratos'],
-    [summary.propostas || 0, 'Propostas']
+    [summary.contratos || 0, 'Contratos', `${summary.propostas || 0} propostas`]
   ];
   const labels = monthly.labels || [],
     last = Math.max(0, labels.length - 1);
@@ -117,7 +149,16 @@ export default function ProfileDashboard({ data }) {
     'mês atual';
   const salesData = {
     labels,
-    datasets: [
+    datasets: [      {
+        label: monthly.expenseLabel || 'Gastos com serviços concluídos (R$)',
+        data: monthly.expenseData || [],
+        borderColor: '#b7791f',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: 3,
+        fill: false,
+        yAxisID: 'y-axis-money'
+      },
       {
         label:
           monthly.primaryLabel ||
@@ -135,10 +176,10 @@ export default function ProfileDashboard({ data }) {
       {
         label: monthly.secondaryLabel || 'Ações',
         data: monthly.secondaryData || [],
-        backgroundColor: 'rgba(33, 150, 243, 0.10)',
-        borderColor: '#2196F3',
+        backgroundColor: 'rgba(4,191,85, 0.10)',
+        borderColor: '#037a3a',
         borderWidth: 2,
-        pointBackgroundColor: '#2196F3',
+        pointBackgroundColor: '#037a3a',
         pointRadius: 3,
         fill: false,
         lineTension: 0.3,
@@ -151,77 +192,68 @@ export default function ProfileDashboard({ data }) {
     datasets: [
       {
         label: distribution.title || 'Distribuição',
-        data: distribution.data || [1],
+        data: distribution.data || [0],
         backgroundColor: distribution.empty
-          ? ['rgba(148, 163, 184, 0.35)']
-          : ['#04BF55', '#2196F3', '#F59E0B', '#8B5CF6', '#EF4444'],
+          ? ['rgba(120,112,96, 0.35)']
+          : ['#04BF55', '#037a3a', '#F59E0B', '#8B5CF6', '#EF4444'],
         borderColor: '#ffffff',
         borderWidth: 2
       }
     ]
   };
   return (
-    <div className="workly-dashboard-parity mb-10 grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] items-stretch gap-5 legacy-max-768:grid-cols-1 [&>section]:animate-workly-legacy-in [&>section:nth-child(1)]:[animation-delay:.1s] [&>section:nth-child(2)]:[animation-delay:.2s] [&>section:nth-child(3)]:[animation-delay:.3s] [&>section:nth-child(4)]:[animation-delay:.4s] [&>section:nth-child(5)]:[animation-delay:.5s] [&>section:nth-child(6)]:[animation-delay:.6s]">
-      <section className={`${panel} p-[25px]`}>
-        <h3 className={title}>Visão Geral</h3>
-        <div className="mb-5 flex flex-wrap gap-[14px]">
-          {stats.map(([value, label]) => (
-            <div
-              key={label}
-              className="mb-[15px] min-w-[170px] flex-[1_1_180px] rounded-[10px] bg-[#f8f9fa] p-[15px] text-center dark:bg-[#0f172a]/70"
-            >
-              <strong className="block text-[1.8rem] text-workly-primary">{value}</strong>
-              <span className="text-[0.9rem] text-[#9e9e9e]">{label}</span>
-            </div>
-          ))}
-        </div>
+    <div className="mb-10 grid gap-5 lg:grid-cols-3">
+      <section className={`${panel} p-5 lg:col-span-3`}>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+        <h3 className="text-[1.05rem] font-semibold text-workly-ink-warm">Visão geral</h3>
         <div className="flex flex-wrap gap-2.5">
-          <Link
-            to="/contratos"
-            className="rounded-full bg-workly-primary/10 px-4 py-2 text-sm font-bold text-workly-primary dark:bg-[#1e293b]"
-          >
+          <Link to="/contratos" className={buttonStyles('secondary', 'md', 'rounded-md')}>
             <i className="fas fa-briefcase" aria-hidden="true" /> Ver contratos
           </Link>
-          <Link
-            to="/anuncio"
-            className="rounded-full bg-workly-primary px-4 py-2 text-sm font-bold text-white"
-          >
+          <Link to="/anuncio" className={buttonStyles('primary', 'md', 'rounded-md')}>
             <i className="fas fa-plus" aria-hidden="true" /> Novo serviço
           </Link>
         </div>
-      </section>
-      <section className={`${panel} p-[25px]`}>
-        <h3 className={title}>Desempenho Mensal</h3>
-        <Chart id="salesChart" config={salesConfig} data={salesData} />
-        <div className="mt-[14px] grid grid-cols-2 gap-2.5 legacy-max-600:grid-cols-1">
-          {[
-            [
-              formatCurrency(
-                summary.valorTotal ||
-                  (monthly.primaryData || []).reduce((sum, value) => sum + Number(value || 0), 0)
-              ),
-              'Total confirmado'
-            ],
-            [formatCurrency(monthly.primaryData?.[last] || 0), month],
-            [monthly.secondaryData?.[last] || 0, 'Atividades no mês'],
-            [summary.servicosPublicados || 0, 'Serviços publicados']
-          ].map(([value, label]) => (
+        </div>
+        <dl className="mt-5 grid grid-cols-2 gap-y-6 border-t border-workly-rule pt-5 md:grid-cols-4">
+          {stats.map(([value, label, hint]) => (
             <div
               key={label}
-              className="min-w-0 rounded-[14px] border border-workly-primary/14 bg-workly-primary/8 px-[14px] py-3 dark:bg-workly-primary/12"
+              className="min-w-0 border-workly-rule px-5 first:pl-0 md:border-l md:first:border-l-0 [&:nth-child(3)]:pl-0 md:[&:nth-child(3)]:pl-5 [&:nth-child(even)]:border-l md:[&:nth-child(even)]:border-l"
             >
-              <span className="mb-1 block text-[.78rem] text-[#64748b] dark:text-[#a9b9cf]">
-                {label}
-              </span>
-              <strong className="block break-words font-extrabold text-[#101827] dark:text-[#f8fafc]">
+              <dt className="text-xs font-medium tracking-[0.04em] text-workly-muted-warm uppercase">{label}</dt>
+              <dd className="mt-1.5 font-workly-display text-[clamp(1.375rem,2.2vw,1.75rem)] leading-none font-semibold break-words text-workly-ink-warm tabular-nums [font-variation-settings:'opsz'_32]">
                 {value}
-              </strong>
+              </dd>
+              <dd className="mt-1.5 text-[0.8rem] text-workly-muted-warm">{hint}</dd>
             </div>
           ))}
-        </div>
+        </dl>
+      </section>
+      <section className={`${panel} flex flex-col p-5 lg:col-span-2`}>
+        <h3 className={title}>Desempenho mensal</h3>
+        {hasValues(salesData) ? (
+          <Chart id="salesChart" config={salesConfig} data={salesData} />
+        ) : (
+          <ChartEmpty icon="fa-chart-line" message="O desempenho mensal aparece aqui depois dos primeiros contratos." />
+        )}
+        <div aria-hidden="true" className="min-h-5 flex-1" />
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-workly-rule pt-4 md:grid-cols-4">
+          {[
+            [monthly.secondaryData?.[last] || 0, `Atividades em ${month.toLowerCase()}`],
+            [summary.servicosPublicados || data.services.length, 'Serviços publicados'],
+            [summary.propostas || 0, 'Propostas'],
+            [summary.contratos || 0, 'Contratos']
+          ].map(([value, label]) => (
+            <div key={label} className="min-w-0">
+              <dt className="text-xs text-workly-muted-warm">{label}</dt>
+              <dd className="mt-0.5 font-semibold break-words text-workly-ink-warm tabular-nums">{value}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
       <section
-        className={`${panel} p-[25px] cursor-pointer focus-visible:outline-2 focus-visible:outline-workly-primary`}
+        className={`${panel} cursor-pointer self-stretch p-5 transition-colors hover:border-workly-forest/30 focus-visible:outline-2 focus-visible:outline-workly-primary`}
         role="button"
         tabIndex={0}
         aria-label="Abrir página de contratos"
@@ -235,36 +267,36 @@ export default function ProfileDashboard({ data }) {
       >
         <h3 className={`${title} flex flex-wrap justify-between gap-3`}>
           Leads{' '}
-          <span className="text-sm">
-            Ver contratos <i className="fas fa-arrow-right" aria-hidden="true" />
+          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-workly-primary-ink">
+            Ver contratos <i className="fas fa-arrow-right text-xs" aria-hidden="true" />
           </span>
         </h3>
         {data.leads.length ? (
-          data.leads.slice(0, 3).map((lead, index) => (
+          data.leads.slice(0, 2).map((lead, index) => (
             <article
               key={lead.idContrato || index}
-              className="flex min-w-0 gap-3 border-b border-[#e0e0e0] py-[14px] dark:border-white/8"
+              className="flex min-w-0 gap-3 border-b border-workly-rule py-[14px] last:border-b-0 last:pb-0 dark:border-white/8"
             >
               <img
                 src={lead.cliente?.fotoPerfil || defaultProfileImage}
                 alt="Foto do cliente"
-                className="h-10 w-[42px] shrink-0 rounded-full border-2 border-workly-primary/18 object-cover"
+                className="h-10 w-10 shrink-0 rounded-full bg-workly-sunken object-cover"
               />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="mb-[3px] flex items-center justify-between gap-2.5">
-                  <h4 className="font-extrabold">{lead.cliente?.nome || 'Cliente'}</h4>
-                  <span className="shrink-0 rounded-full bg-workly-primary/12 px-2.5 py-[5px] text-[0.8rem] font-extrabold text-workly-primary">
+                  <h4 className="font-semibold">{lead.cliente?.nome || 'Cliente'}</h4>
+                  <span className="shrink-0 rounded-full bg-workly-primary/12 px-2.5 py-[5px] text-[0.8rem] font-semibold text-workly-primary-ink">
                     {formatContractStatus(lead.status)}
                   </span>
                 </div>
-                <p className="mb-1.5 text-[0.86rem] font-extrabold text-workly-primary">
+                <p className="mb-1.5 text-[0.86rem] font-medium text-workly-ink-warm/80">
                   {lead.tipoContratacao === 'fixo' ? 'Contratação direta' : 'Proposta recebida'} ·{' '}
                   {lead.nomeServico || lead.nome_servico || 'Serviço'}
                 </p>
-                <p className="mt-1 mb-2.5 text-[0.84rem] leading-[1.45] text-[#64748b] dark:text-[#a9b9cf]">
+                <p className="mt-1 mb-2.5 text-[0.84rem] leading-[1.45] text-workly-muted-warm dark:text-[#9aa59f]">
                   {lead.mensagem || 'Sem mensagem enviada.'}
                 </p>
-                <div className="flex flex-wrap gap-2 text-[0.78rem] text-[#9e9e9e] [&>span]:rounded-full [&>span]:bg-workly-primary/8 [&>span]:px-2 [&>span]:py-[5px]">
+                <div className="flex flex-wrap gap-2 text-[0.78rem] text-workly-muted-warm [&>span]:inline-flex [&>span]:items-center [&>span]:gap-1.5 [&>span]:tabular-nums">
                   <span>
                     <i className="fas fa-money-bill-wave" aria-hidden="true" />{' '}
                     {lead.tipoContratacao === 'combinar' && !lead.preco && !lead.precoProposto
@@ -288,18 +320,22 @@ export default function ProfileDashboard({ data }) {
           </EmptyState>
         )}
       </section>
-      <section className={`${panel} p-[25px]`}>
-        <h3 className={title}>Distribuição de Receita</h3>
-        <Chart id="revenueChart" config={revenueConfig} data={revenueData} />
+      <section className={`${panel} p-5`}>
+        <h3 className={title}>Receita por serviço concluído</h3>
+        {!distribution.empty && hasValues(revenueData) ? (
+          <Chart id="revenueChart" config={revenueConfig} data={revenueData} />
+        ) : (
+          <ChartEmpty icon="fa-chart-pie" message="A receita aparece após a conclusão de um serviço vendido por você. Compras não entram neste gráfico." />
+        )}
         <div className="mt-4 grid gap-2.5">
-          {(distribution.empty ? ['Sem receita confirmada ainda'] : distribution.labels || []).map(
+          {(distribution.empty ? ['Nenhum serviço vendido e concluído'] : distribution.labels || []).map(
             (label, index) => (
               <div
                 key={index}
-                className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3 rounded-xl border border-[#94a3b8]/16 bg-[#f4f7fb] px-3 py-[11px] dark:bg-[#0f172a]/70"
+                className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3 border-t border-workly-rule pt-2.5 text-sm"
               >
-                <span className="truncate">{label}</span>
-                <strong className="text-workly-primary">
+                <span className="truncate text-workly-muted-warm">{label}</span>
+                <strong className="font-semibold text-workly-ink-warm tabular-nums">
                   {formatCurrency(distribution.empty ? 0 : distribution.data[index] || 0)}
                 </strong>
               </div>
@@ -307,34 +343,33 @@ export default function ProfileDashboard({ data }) {
           )}
         </div>
       </section>
-      <section className={`${panel} p-[25px]`}>
-        <h3 className={title}>Atividades Recentes</h3>
+      <section className={`${panel} p-5`}>
+        <h3 className={title}>Atividades recentes</h3>
         {dashboard.recentActivities?.length ? (
           dashboard.recentActivities.slice(0, 3).map((activity, index) => (
             <article
               key={index}
-              className="flex min-w-0 items-start gap-3 border-b border-[#e0e0e0] py-[14px] dark:border-white/8"
+              className="flex min-w-0 items-start gap-3 border-b border-workly-rule py-[14px] first:pt-0 last:border-b-0 last:pb-0 dark:border-white/8"
             >
-              <i
-                aria-hidden="true"
-                className={`fas ${activity.icon || 'fa-bell'} grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-workly-primary/12 text-workly-primary`}
-              />
+              <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-workly-primary-tint text-sm leading-none text-workly-primary-ink">
+                <i className={`fas ${activity.icon || 'fa-bell'}`} />
+              </span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap justify-between gap-2">
-                  <p className="font-extrabold">{activity.titulo || 'Atividade'}</p>
+                  <p className="font-semibold">{activity.titulo || 'Atividade'}</p>
                   {activity.status && (
-                    <span className="shrink-0 rounded-full bg-workly-primary/12 px-[9px] py-[5px] text-[0.78rem] font-extrabold text-[#049b45]">
+                    <span className="shrink-0 rounded-full bg-workly-primary/12 px-[9px] py-[5px] text-[0.78rem] font-semibold text-workly-primary-ink">
                       {activity.status}
                     </span>
                   )}
                 </div>
                 {activity.descricao && (
-                  <p className="text-sm text-[#64748b] dark:text-[#a9b9cf]">{activity.descricao}</p>
+                  <p className="text-sm text-workly-muted-warm dark:text-[#9aa59f]">{activity.descricao}</p>
                 )}
-                <div className="mt-2 flex flex-wrap gap-2 text-[0.8rem] text-[#9e9e9e]">
+                <div className="mt-2 flex flex-wrap gap-2 text-[0.8rem] text-workly-muted-warm">
                   <span>{activityDate(activity.date)}</span>
                   {Number(activity.valor) > 0 && (
-                    <strong className="rounded-full bg-[#0f172a]/6 px-[9px] py-[5px] text-[0.78rem] font-extrabold text-[#334155]">
+                    <strong className="font-semibold text-workly-ink-warm/80 tabular-nums before:mr-2 before:content-['·']">
                       {formatCurrency(activity.valor)}
                     </strong>
                   )}
@@ -352,8 +387,9 @@ export default function ProfileDashboard({ data }) {
           </EmptyState>
         )}
       </section>
-      <section className={`${panel} p-[25px]`}>
-        <h3 className={title}>Atividade da Semana</h3>
+      <section className={`${panel} p-5`}>
+        <h3 className={title}>Atividade da semana</h3>
+        {hasValues({ datasets: [{ data: weekly.data || [] }] }) ? (
         <Chart
           id="viewsChart"
           config={viewsConfig}
@@ -363,11 +399,14 @@ export default function ProfileDashboard({ data }) {
               {
                 label: 'Atividades',
                 data: weekly.data || [0, 0, 0, 0, 0, 0, 0],
-                backgroundColor: 'rgba(34, 197, 94, 0.85)'
+                backgroundColor: '#04BF55'
               }
             ]
           }}
         />
+        ) : (
+          <ChartEmpty icon="fa-calendar-week" message="Sem atividades registradas nesta semana." />
+        )}
       </section>
     </div>
   );

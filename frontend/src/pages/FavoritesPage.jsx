@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { serviceImage } from '../components/home/offices';
 import CatalogShell from '../components/catalog/CatalogShell';
 import { LoadingState } from '../components/ui/Feedback';
 import {
@@ -74,18 +75,18 @@ export default function FavoritesPage() {
                     className={moduleSurface}
                   >
                     <img
-                      src={s.imagemServico || defaultServiceImage}
+                      src={serviceImage(s, defaultServiceImage)}
                       alt=""
                       loading="lazy"
                       onError={(event) => {
                         event.currentTarget.onerror = null;
                         event.currentTarget.src = defaultServiceImage;
                       }}
-                      className="h-[170px] w-full bg-[#0f172a] object-cover"
+                      className="h-[170px] w-full bg-[#16211b] object-cover"
                     />
                     <div className="p-5">
                       <h3 className="mb-2 text-[1.15rem] font-bold">{s.nome}</h3>
-                      <p className="mb-3.5 leading-[1.55] text-[#64748b] dark:text-[#aebbd0]">
+                      <p className="mb-3.5 leading-[1.55] text-workly-muted-warm dark:text-[#9aa59f]">
                         {String(s.descricao || '').slice(0, 110)}
                       </p>
                       <div className="my-3 flex flex-wrap gap-2">
@@ -95,7 +96,7 @@ export default function FavoritesPage() {
                         ].map(([icon, text]) => (
                           <span
                             key={icon}
-                            className="inline-flex items-center gap-1.5 rounded-full bg-[#f1f5f9] px-2.5 py-[7px] text-[0.82rem] font-bold text-[#475569] dark:bg-[#17233a] dark:text-[#d7e2f2]"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-workly-sunken px-2.5 py-[7px] text-[0.82rem] font-bold text-workly-ink-warm/80 dark:bg-[#1a2621] dark:text-[#ddd8cc]"
                           >
                             <i aria-hidden="true" className={`fas ${icon}`} />
                             {text}

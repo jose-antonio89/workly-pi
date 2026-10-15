@@ -13,14 +13,14 @@ import { limparSessao, obterUsuario } from '../../services/authService';
 import { defaultProfileImage } from '../../services/catalogService';
 
 const control =
-  'w-full min-w-0 rounded-lg border border-[#e0e0e0] bg-white px-[15px] py-3 text-base [line-height:normal] text-[#111827] outline-none focus:border-workly-primary focus:shadow-[0_0_0_3px_#8fd9af] dark:border-[rgba(94,130,172,0.22)] dark:bg-[rgba(10,18,34,0.92)] dark:text-workly-dark-text';
+  'w-full min-w-0 rounded-md border border-workly-rule bg-workly-paper/50 px-3.5 py-3 text-[0.95rem] [line-height:normal] text-workly-ink-warm outline-none transition-[border-color,box-shadow] focus:border-workly-forest focus:shadow-[0_0_0_3px_rgba(14,59,44,0.14)] disabled:cursor-not-allowed disabled:opacity-60 dark:focus:border-workly-dark-accent';
 export const saveStyle =
-  'rounded-lg border-0 bg-workly-primary px-[25px] py-3 font-semibold text-white hover:bg-[#038a3d] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-workly-primary disabled:opacity-50';
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-workly-forest px-5 font-semibold text-workly-on-forest transition-[background-color,transform] hover:bg-workly-forest-raised motion-safe:active:scale-[0.97] disabled:opacity-60 dark:bg-workly-dark-accent dark:text-workly-night';
 export const cancelStyle =
-  'rounded-lg border-0 bg-[#e4e4e4] px-[25px] py-3 font-semibold text-[#333] hover:bg-[#dbdbdb] focus-visible:outline-2 focus-visible:outline-workly-primary dark:bg-[#1e293b] dark:text-workly-dark-text';
+  'inline-flex min-h-11 items-center justify-center rounded-md border border-workly-rule bg-workly-card px-5 font-semibold text-workly-ink-warm transition-colors hover:border-workly-forest/40';
 const sections = [
-  ['profile', 'Perfil', 'fa-user', 'Configurações de Perfil'],
-  ['portfolio', 'Portfólio', 'fa-briefcase', 'Portfólio e Serviços'],
+  ['profile', 'Perfil', 'fa-user', 'Perfil'],
+  ['portfolio', 'Portfólio', 'fa-briefcase', 'Portfólio e serviços'],
   ['account', 'Conta', 'fa-cog', 'Conta'],
   ['billing', 'Pagamentos', 'fa-credit-card', 'Pagamentos'],
   ['notification', 'Notificações', 'fa-bell', 'Notificações'],
@@ -71,7 +71,7 @@ export default function ProfileSettings({ user, reload, onPhoto }) {
         labelClassName={
           ['linkedin', 'github', 'instagram'].includes(key)
             ? 'sr-only'
-            : 'mb-2 block font-medium dark:text-[#e5eefb]'
+            : 'mb-2 block font-medium dark:text-[#e8e4da]'
         }
         type={options ? undefined : type}
         as={options ? 'select' : type === 'textarea' ? 'textarea' : 'input'}
@@ -100,11 +100,11 @@ export default function ProfileSettings({ user, reload, onPhoto }) {
     return (
       <label
         key={key}
-        className="mb-3 flex min-w-0 items-center justify-between gap-4 rounded-xl border border-[#94a3b8]/18 bg-[#f8fafc] p-4 dark:bg-[#0f172a]/55"
+        className="flex min-w-0 items-center justify-between gap-5 border-b border-workly-rule py-6"
       >
         <span className="min-w-0">
           <strong className="block">{title}</strong>
-          <small className="block text-[#64748b] dark:text-[#a9b9cf]">{description}</small>
+          <small className="mt-1 block text-sm leading-relaxed text-workly-muted-warm">{description}</small>
         </span>
         <input
           type="checkbox"
@@ -251,7 +251,8 @@ export default function ProfileSettings({ user, reload, onPhoto }) {
           title: 'Excluir conta?',
           text: 'Tem certeza que deseja excluir sua conta? Esta ação é irreversível.',
           confirmText: 'Excluir',
-          cancelText: 'Cancelar'
+          cancelText: 'Cancelar',
+          danger: true
         })
       ).isConfirmed
     )
@@ -280,41 +281,41 @@ export default function ProfileSettings({ user, reload, onPhoto }) {
   }
   function actions(label, section) {
     return (
-      <div className="mt-[30px] flex flex-wrap gap-[15px]">
+      <div className="mt-8 flex flex-wrap items-center justify-end gap-3 border-t border-workly-rule pt-6">
+        <Button
+          type="button"
+          appearance="custom"
+          className="rounded-lg border border-workly-rule bg-transparent px-[25px] py-3 text-sm font-semibold text-workly-muted-warm focus-visible:outline-2 focus-visible:outline-workly-primary dark:border-[#3a4741]/22 dark:text-[#ecebe5]"
+          onClick={() => setValues(initialFields(user))}
+        >
+          Cancelar
+        </Button>
         <Button
           type="submit"
           appearance="custom"
           disabled={busy}
-          className={`${saveStyle} text-[13.3333px] [line-height:normal]`}
+          className={`${saveStyle} text-sm`}
         >
           {label}
-        </Button>
-        <Button
-          type="button"
-          appearance="custom"
-          className="rounded-lg border border-[#e0e0e0] bg-transparent px-[25px] py-3 text-[13.3333px] [line-height:normal] font-semibold text-[#9e9e9e] focus-visible:outline-2 focus-visible:outline-workly-primary dark:border-[#5e82ac]/22 dark:text-[#eef4ff]"
-          onClick={section === 'profile' ? undefined : reload}
-        >
-          Cancelar
         </Button>
       </div>
     );
   }
   const row = 'mb-5 flex gap-5 [&>div]:flex-1 [&>div]:mb-0 legacy-max-920:flex-col';
   return (
-    <div className="flex items-start gap-8 legacy-max-920:flex-col">
+    <div className="grid grid-cols-[200px_minmax(0,1fr)] items-start gap-6 legacy-max-920:grid-cols-1">
       <nav
         aria-label="Configurações"
-        className="w-[250px] shrink-0 overflow-hidden rounded-[18px] border border-[#94a3b8]/16 bg-white/72 py-5 shadow-[0_16px_36px_rgba(15,23,42,0.08)] legacy-max-920:w-full dark:rounded-3xl dark:bg-transparent dark:bg-[linear-gradient(160deg,rgba(14,22,38,.82),rgba(12,20,34,.76))]"
+        className="sticky top-6 min-w-0 legacy-max-920:static"
       >
-        <div className="flex flex-col dark:bg-[#1b2738] legacy-max-920:flex-row legacy-max-920:flex-wrap legacy-max-920:gap-2.5 legacy-max-920:px-2.5">
+        <p className="mb-4 px-3 text-xs font-semibold tracking-[0.16em] uppercase text-workly-muted-warm">Sua conta</p><div className="flex flex-col gap-1 legacy-max-920:flex-row legacy-max-920:overflow-x-auto legacy-max-920:[scrollbar-width:none]">
           {sections.map(([key, label, icon]) => (
             <button
               key={key}
               type="button"
               onClick={() => setActive(key)}
               aria-current={active === key ? 'page' : undefined}
-              className={`flex items-center gap-2.5 border-l-4 px-[25px] py-[15px] text-left font-medium focus-visible:outline-2 focus-visible:outline-workly-primary legacy-max-920:rounded-lg legacy-max-920:px-[15px] legacy-max-920:py-2.5 legacy-max-600:px-3! legacy-max-600:py-2! legacy-max-600:text-[.9rem] ${active === key ? 'border-workly-primary bg-workly-primary/18 text-workly-primary legacy-max-920:border-l-0 legacy-max-920:border-b-[3px] dark:legacy-max-920:border-l-4! dark:bg-transparent dark:bg-[linear-gradient(90deg,rgba(4,191,85,.18),rgba(4,191,85,.08))] dark:text-[#4ade80]' : 'border-transparent text-[#1f2937] hover:bg-[#f8f9fa] hover:text-workly-primary dark:text-[#e5eefb] dark:hover:bg-workly-primary/10'}`}
+              className={`flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-3 text-left text-[0.95rem] font-medium whitespace-nowrap transition-colors ${active === key ? 'bg-workly-forest text-workly-on-forest dark:bg-workly-primary-tint dark:text-workly-primary-ink' : 'text-workly-muted-warm hover:bg-workly-paper hover:text-workly-ink-warm'}`}
             >
               <i aria-hidden="true" className={`fas ${icon} w-5 text-center`} />
               {label}
@@ -322,42 +323,34 @@ export default function ProfileSettings({ user, reload, onPhoto }) {
           ))}
         </div>
       </nav>
-      <div className="flex-1 rounded-[15px] pt-2 dark:rounded-3xl legacy-max-600:w-full">
+      <div className="w-full min-w-0 max-w-[820px] rounded-xl border border-workly-rule bg-workly-card p-5 sm:p-7">
         {sections.map(([key, , , heading]) => (
           <section key={key} hidden={active !== key}>
-            <h2 className="mb-5 text-2xl [line-height:normal] font-bold text-workly-primary dark:text-[#e5eefb]">
+            <h2 className="font-workly-display text-[1.75rem] leading-tight font-semibold tracking-[-0.025em] text-workly-ink-warm">
               {heading}
-            </h2>
+            </h2>            <p className="mt-2 mb-5 border-b border-workly-rule pb-4 text-sm leading-relaxed text-workly-muted-warm">
+              {{ profile: 'Sua apresentação na Workly. Mantenha seus dados e canais de contato atualizados.', portfolio: 'Organize suas referências profissionais e sua disponibilidade.', account: 'Escolha como você participa da plataforma.', billing: 'Gerencie os dados de pagamento informados no seu perfil.', notification: 'Escolha quais comunicações você deseja receber.', security: 'Cuide do acesso à sua conta e mantenha sua senha atualizada.' }[key]}
+            </p>
             {key === 'profile' && (
               <>
-                <div className="mb-[25px] max-w-[800px]">
-                  <div className="mb-5">
-                    <p className="mb-2 font-medium">Foto de Perfil</p>
-                    <div className="flex items-center gap-5 legacy-max-576:flex-col legacy-max-576:items-start">
-                      <img
-                        src={user.fotoPerfil || defaultProfileImage}
-                        alt="Foto de perfil atual"
-                        className="h-24 w-24 shrink-0 rounded-full object-cover"
-                      />
-                      <div className="flex flex-col items-start justify-center gap-2 legacy-max-600:items-center">
-                        <Button
-                          appearance="custom"
-                          className="relative inline-flex items-center justify-center gap-2.5 overflow-hidden rounded-full bg-[linear-gradient(135deg,#08c765,#04984e)] px-5 py-[13px] text-[13.3333px] [line-height:normal] font-bold text-white dark:text-[#eef4ff] dark:bg-none dark:bg-[#162236] shadow-[0_12px_26px_rgba(0,200,83,0.28)] focus-visible:outline-2 focus-visible:outline-workly-primary"
-                          onClick={onPhoto}
-                        >
-                          <i
-                            className="fas fa-camera inline-flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white/18"
-                            aria-hidden="true"
-                          />{' '}
-                          Alterar foto
-                        </Button>
-                        <p className="mt-2 max-w-[520px] text-[0.9rem] leading-[1.5] text-[#777] dark:text-[#e5eefb]">
-                          Envie uma imagem JPG, PNG ou WEBP para deixar seu perfil mais
-                          profissional.
-                        </p>
-                      </div>
-                    </div>
+                <div className="mb-6 flex flex-wrap items-center gap-4 border-b border-workly-rule pb-6">
+                  <img
+                    src={user.fotoPerfil || defaultProfileImage}
+                    alt="Foto de perfil atual"
+                    className="h-16 w-16 shrink-0 rounded-full bg-workly-sunken object-cover shadow-[0_0_0_1px_var(--color-workly-rule)]"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-workly-ink-warm">Foto de perfil</p>
+                    <p className="mt-0.5 text-sm text-workly-muted-warm">JPG, PNG ou WEBP. Recorte e ajuste antes de salvar.</p>
                   </div>
+                  <Button
+                    appearance="custom"
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-workly-rule bg-workly-card px-4 text-sm leading-none font-semibold text-workly-ink-warm transition-colors hover:border-workly-forest/40 hover:bg-workly-paper focus-visible:outline-2 focus-visible:outline-workly-primary"
+                    onClick={onPhoto}
+                  >
+                    <i aria-hidden="true" className="fas fa-camera text-workly-primary-ink" />
+                    Alterar foto
+                  </Button>
                 </div>
                 <form onSubmit={(event) => submit(event, key)}>
                   <div className={row}>
@@ -390,11 +383,8 @@ export default function ProfileSettings({ user, reload, onPhoto }) {
                         ['github', 'GitHub', 'github.com/seuusuario'],
                         ['instagram', 'Instagram', 'instagram.com/seuusuario']
                       ].map(([name, label, placeholder]) => (
-                        <div key={name} className="flex items-center">
-                          <i
-                            aria-hidden="true"
-                            className={`fab fa-${name} flex h-10 w-10 shrink-0 items-center justify-center rounded-l-lg border border-r-0 border-[#e0e0e0] bg-[#f8f9fa] text-[#9e9e9e]`}
-                          />
+                        <div key={name} className="flex items-stretch">
+                          <span aria-hidden="true" className="grid w-12 shrink-0 self-stretch place-items-center rounded-l-md border border-r-0 border-workly-rule bg-workly-paper text-workly-muted-warm"><i className={`fab fa-${name}`} /></span>
                           {field(name, label, 'text', placeholder)}
                         </div>
                       ))}
@@ -402,11 +392,11 @@ export default function ProfileSettings({ user, reload, onPhoto }) {
                   </div>
                   {actions('Salvar Alterações', key)}
                 </form>
-                <form onSubmit={remove}>
+                <form onSubmit={remove} className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-red-500/20 bg-red-500/5 p-5"><div><h3 className="font-semibold text-workly-ink-warm">Excluir conta</h3><p className="mt-1 text-sm text-workly-muted-warm">Esta ação é permanente e não pode ser desfeita.</p></div>
                   <Button
                     appearance="custom"
                     type="submit"
-                    className="[appearance:auto] border-2 border-[#767676] [border-style:outset] bg-[#efefef] px-0.5 py-px text-[13.3333px] [line-height:normal] text-black focus-visible:outline-2 focus-visible:outline-[#ef4444]"
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-red-500/30 px-4 text-sm font-semibold text-red-700 hover:bg-red-500/10 dark:text-red-300"
                     disabled={busy}
                   >
                     <i aria-hidden="true" className="fa-solid fa-trash" /> Excluir conta
@@ -417,7 +407,7 @@ export default function ProfileSettings({ user, reload, onPhoto }) {
             {key === 'portfolio' && (
               <form onSubmit={(event) => submit(event, key)}>
                 <div className="mb-5 flex gap-3 bg-[#04bf55]/8 p-[18px]">
-                  <i aria-hidden="true" className="fas fa-circle-info text-workly-primary" />
+                  <i aria-hidden="true" className="fas fa-circle-info text-workly-primary-ink" />
                   <div>
                     <strong>Esses dados ajudam a montar uma vitrine profissional.</strong>
                     <p>
@@ -459,7 +449,7 @@ export default function ProfileSettings({ user, reload, onPhoto }) {
             {key === 'account' && (
               <>
                 <div className="mb-[18px] flex gap-[14px]">
-                  <i aria-hidden="true" className="fas fa-user-gear text-workly-primary" />
+                  <i aria-hidden="true" className="fas fa-user-gear text-workly-primary-ink" />
                   <div>
                     <strong>Tipo de conta</strong>
                     <p>
@@ -557,7 +547,7 @@ export default function ProfileSettings({ user, reload, onPhoto }) {
                   {field('novaSenha', 'Nova senha', 'password')}
                 </div>
                 {field('confirmarSenha', 'Confirmar nova senha', 'password')}
-                <p className="my-4 text-sm text-[#64748b] dark:text-[#a9b9cf]">
+                <p className="my-4 text-sm text-workly-muted-warm dark:text-[#9aa59f]">
                   A verificação em duas etapas ainda não está disponível nesta versão.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2.5">

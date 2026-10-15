@@ -52,17 +52,7 @@ function valorContrato(contrato) {
 }
 
 function contratoTemValorConfirmado(contrato) {
-  const status = String(contrato?.status || 'pendente');
-  const tipoContratacao = String(contrato?.tipoContratacao || 'fixo');
-
-  if (status === 'cancelado') return false;
-
-  // contratação direta/preço fixo já nasce com valor fechado.
-  if (tipoContratacao === 'fixo') return true;
-
-  // propostas de valor a combinar só entram na receita
-  // depois que o freelancer aceitar/iniciar/finalizar o contrato.
-  return ['proposta_aceita', 'em_andamento', 'concluido', 'encerrado'].includes(status);
+  return ['concluido', 'encerrado'].includes(String(contrato?.status));
 }
 
 function statusLegivel(status) {
@@ -163,6 +153,8 @@ async function montarDashboardPerfil(req, usuario, totalServicosPublicados = 0) 
     .limit(20);
 
   const primaryData = meses.map(() => 0);
+  const expenseData = meses.map(() => 0);
+  let gastosTotal = 0;
   const secondaryData = meses.map(() => 0);
   const revenueByLabel = new Map();
   let valorTotal = 0;
@@ -187,6 +179,11 @@ async function montarDashboardPerfil(req, usuario, totalServicosPublicados = 0) 
 
     if (valorConfirmado && valor > 0 && (userIsFreelancerInContract || userIsClientInContract)) {
       const index = indiceMeses.get(obterChaveMes(contrato.updatedAt || contrato.createdAt));
+      if (userIsClientInContract && !userIsFreelancerInContract) {
+        if (index !== undefined) expenseData[index] += valor;
+        gastosTotal += valor;
+        return;
+      }
       if (index !== undefined) primaryData[index] += valor;
       valorTotal += valor;
 
@@ -308,6 +305,7 @@ async function montarDashboardPerfil(req, usuario, totalServicosPublicados = 0) 
   return {
     summary: {
       valorTotal: Number(valorTotal.toFixed(2)),
+      gastosTotal: Number(gastosTotal.toFixed(2)),
       contratos: quantidadeContratos,
       propostas: quantidadePropostas,
       servicosPublicados: servicosPublicados.length,
@@ -321,19 +319,21 @@ async function montarDashboardPerfil(req, usuario, totalServicosPublicados = 0) 
     },
     monthlyPerformance: {
       labels: meses.map((mes) => mes.label),
-      primaryLabel: isFreelancer ? 'Receita confirmada (R$)' : 'Gastos confirmados (R$)',
+      primaryLabel: 'Receita de serviços concluídos (R$)',
+      expenseLabel: 'Gastos com serviços concluídos (R$)',
+      expenseData: expenseData.map((valor) => Number(valor.toFixed(2))),
       primaryData: primaryData.map((valor) => Number(valor.toFixed(2))),
       secondaryLabel: 'Atividades',
       secondaryData
     },
     revenueDistribution: {
-      title: isFreelancer ? 'Receita confirmada por serviço' : 'Gastos confirmados por categoria',
+      title: 'Receita por serviço concluído',
       labels: distributionEntries.length
         ? distributionEntries.map(([label]) => label)
         : ['Sem movimentação ainda'],
       data: distributionEntries.length
         ? distributionEntries.map(([, valor]) => Number(valor.toFixed(2)))
-        : [1],
+        : [0],
       empty: distributionEntries.length === 0
     },
     weeklyActivity: {

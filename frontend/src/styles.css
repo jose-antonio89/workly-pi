@@ -82,23 +82,44 @@
   --color-workly-primary: #04bf55;
   --color-workly-primary-dark: #039447;
   --color-workly-primary-glow: #0fce6a;
-  --color-workly-background: #f3f7fc;
+  /* Brand green stays for fills and accents; ink carries text and white-label buttons (≥4.5:1). */
+  --color-workly-primary-ink: #037a3a;
+  --color-workly-primary-ink-hover: #036b33;
+  --color-workly-primary-tint: #e7f6ee;
+  --color-workly-deep: #05452a;
+  /* Editorial home: warm paper ground, forest field, Bricolage display. */
+  --color-workly-paper: #f5f3ee;
+  --color-workly-rule: #ddd8cc;
+  --color-workly-ink-warm: #16211b;
+  --color-workly-muted-warm: #5e6862;
+  --color-workly-forest: #0e3b2c;
+  --color-workly-forest-raised: #1d5a43;
+  --color-workly-on-forest: #f3f1ea;
+  --color-workly-on-forest-muted: #a9c4b6;
+  --color-workly-night: #0c1411;
+  --color-workly-night-raised: #131d19;
+  /* Theme-aware surfaces: card sits on paper; sunken is a quiet inset. Redefined for dark below. */
+  --color-workly-card: #ffffff;
+  --color-workly-sunken: #efece5;
+  --font-workly-display: 'Bricolage Grotesque', Poppins, sans-serif;
+  --color-workly-background: #f5f3ee;
   --color-workly-surface: #ffffff;
-  --color-workly-surface-muted: #edf2f9;
-  --color-workly-border: #dde4ee;
-  --color-workly-text: #111827;
-  --color-workly-text-muted: #5a6a82;
-  --color-workly-dark-background: #0a111f;
-  --color-workly-dark-surface: #0e1929;
-  --color-workly-dark-surface-muted: #162236;
-  --color-workly-dark-border: rgba(94, 130, 172, 0.2);
-  --color-workly-dark-text: #eef4ff;
-  --color-workly-dark-text-muted: #8fa3c4;
+  --color-workly-surface-muted: #efece5;
+  --color-workly-border: #ddd8cc;
+  --color-workly-text: #16211b;
+  --color-workly-text-muted: #5e6862;
+  --color-workly-dark-background: #0c1411;
+  --color-workly-dark-surface: #131d19;
+  --color-workly-dark-surface-muted: #1a2621;
+  --color-workly-dark-border: rgba(236, 235, 229, 0.12);
+  --color-workly-dark-text: #ecebe5;
+  --color-workly-dark-text-muted: #9aa59f;
   --color-workly-dark-accent: #4ade80;
   --font-workly: Poppins, sans-serif;
-  --shadow-workly: 0 12px 36px rgba(15, 23, 42, 0.08);
-  --shadow-workly-sm: 0 4px 16px rgba(15, 23, 42, 0.06);
-  --shadow-workly-dark: 0 20px 52px rgba(0, 4, 18, 0.55);
+  --shadow-workly: 0 1px 2px rgba(22, 33, 27, 0.05);
+  --shadow-workly-sm: 0 1px 2px rgba(22, 33, 27, 0.04);
+  --shadow-workly-dark: none;
+  --ease-workly-out: cubic-bezier(0.23, 1, 0.32, 1);
   --animate-workly-spin: spin 0.8s linear infinite;
   --animate-workly-modal-in: workly-modal-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-workly-modal-out: workly-modal-out 0.16s ease both;
@@ -137,6 +158,62 @@
 
 @custom-variant dark (&:where([data-workly-theme="dark"], [data-workly-theme="dark"] *));
 
+/* Browser surfaces share the palette: one focus ring and selection colour everywhere. */
+/* One switch for every warm token, so components never need ad-hoc dark colours to stay legible. */
+[data-workly-theme='dark'] {
+  --color-workly-paper: #0c1411;
+  --color-workly-card: #131d19;
+  --color-workly-sunken: #1a2621;
+  --color-workly-rule: rgba(236, 235, 229, 0.14);
+  --color-workly-ink-warm: #ecebe5;
+  --color-workly-muted-warm: #a3ada7;
+  --color-workly-primary-ink: #5fd394;
+  --color-workly-primary-tint: rgba(95, 211, 148, 0.12);
+  --color-workly-text: #ecebe5;
+  --color-workly-text-muted: #a3ada7;
+  --color-workly-border: rgba(236, 235, 229, 0.14);
+  --color-workly-surface: #131d19;
+  --color-workly-surface-muted: #1a2621;
+  --color-workly-background: #0c1411;
+}
+
+@layer base {
+  /* Tailwind's preflight resets buttons to the default cursor; restore intent for real controls only. */
+  :where(a[href], button, [role='button'], [role='tab'], [role='menuitem'], summary, select, input[type='checkbox'], input[type='radio'], input[type='file']):not(:disabled, [aria-disabled='true']) {
+    cursor: pointer;
+  }
+  :where(button, input, select, textarea):disabled,
+  [aria-disabled='true'] {
+    cursor: not-allowed;
+  }
+  ::placeholder {
+    color: var(--color-workly-muted-warm);
+    opacity: 1;
+  }
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-workly-primary-ink);
+    outline-offset: 2px;
+  }
+  [data-workly-theme='dark'] :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline-color: var(--color-workly-dark-accent);
+  }
+  /* Explicit pairs per theme: selected text stays readable on any surface, including forest panels. */
+  ::selection {
+    background: #0e3b2c;
+    color: #f5f3ee;
+  }
+  [data-workly-theme='dark'] ::selection,
+  [data-workly-theme='dark']::selection {
+    background: #5fd394;
+    color: #0c1411;
+  }
+  .bg-workly-forest ::selection,
+  .bg-workly-forest::selection {
+    background: #f5f3ee;
+    color: #0e3b2c;
+  }
+}
+
 /* Scoped counterparts of the official dashboard's final cascade. */
 @utility workly-dashboard-parity {
   & > section {
@@ -152,7 +229,7 @@
     @apply inline-flex min-h-10 items-center justify-center gap-2 px-[14px] py-0 text-base font-extrabold;
   }
   & > section:first-child > div:last-child a:last-child {
-    @apply bg-[linear-gradient(135deg,#0fce6a,#04bf55)];
+    @apply bg-workly-forest;
   }
   & > section:nth-child(4) > div:last-child > div {
     @apply items-center max-[720px]:grid-cols-1 max-[720px]:gap-1;

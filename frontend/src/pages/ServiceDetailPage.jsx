@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import CatalogShell from '../components/catalog/CatalogShell';
+import { assignCovers, officeFor } from '../components/home/offices';
+import ServiceCard from '../components/catalog/ServiceCard';
 import Button from '../components/ui/Button';
 import { ErrorState } from '../components/ui/Feedback';
 import { buscarUsuarioAtual, obterToken } from '../services/authService';
 import {
+  categoryLabel,
   serviceDetail,
+  categoryServices,
   favoriteStatus,
   updateFavorite,
   defaultServiceImage,
@@ -15,26 +19,25 @@ import {
   serviceSummary
 } from '../services/catalogService';
 
-const surface =
-  'border border-[rgba(226,232,240,0.9)] bg-white/94 shadow-[0_18px_48px_rgba(15,23,42,0.09)] dark:border-[rgba(148,163,184,0.16)] dark:bg-[rgba(18,26,42,0.94)] dark:shadow-[0_18px_48px_rgba(0,0,0,0.32)]';
+const surface = 'border border-workly-rule bg-workly-card dark:border-white/10 dark:bg-workly-night-raised';
 const action =
-  'inline-flex min-h-12 w-full items-center justify-center gap-[9px] rounded-[14px] text-[0.9rem] font-[850] transition-transform hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-[0.72] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-workly-primary';
+  'inline-flex min-h-12 w-full items-center justify-center gap-[9px] rounded-md text-[0.95rem] font-semibold transition-[background-color,border-color,transform] duration-150 motion-safe:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-[0.72] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-workly-primary';
 function fallbackImage(event, fallback) {
   if (event.currentTarget.src !== new URL(fallback, location.origin).href)
     event.currentTarget.src = fallback;
 }
 function Description({ title, kicker, children }) {
   return (
-    <article className={`${surface} rounded-[22px] p-[26px] legacy-max-780:p-5`}>
+    <article className="border-t border-workly-rule pt-6">
       <div className="mb-4">
-        <span className="mb-2 inline-flex text-xs font-black text-[#039848] uppercase">
+        <span className="sr-only">
           {kicker}
         </span>
-        <h2 className="text-[1.28rem] leading-[1.2] font-[850] text-[#0f172a] dark:text-workly-dark-text">
+        <h2 className="text-[1.25rem] leading-[1.2] font-semibold text-workly-ink-warm dark:text-workly-dark-text">
           {title}
         </h2>
       </div>
-      <p className="text-[0.98rem] leading-[1.82] break-words whitespace-pre-line text-[#475569] dark:text-workly-dark-text">
+      <p className="max-w-[68ch] text-[1rem] leading-[1.8] break-words whitespace-pre-line text-workly-ink-warm/85">
         {children}
       </p>
     </article>
@@ -50,7 +53,8 @@ export default function ServiceDetailPage() {
     [error, setError] = useState(null);
   const [saved, setSaved] = useState(false),
     [saving, setSaving] = useState(false),
-    [toast, setToast] = useState(null);
+    [toast, setToast] = useState(null),
+    [related, setRelated] = useState([]);
   const toastTimer = useRef(null),
     redirectTimer = useRef(null);
   useEffect(
@@ -113,7 +117,9 @@ export default function ServiceDetailPage() {
   const service = data?.service || {},
     raw = data?.raw || {};
   const name = data ? service.nome || 'Serviço sem título' : 'Carregando serviço...';
-  const category = data ? service.nomeCategoria || 'Categoria não informada' : 'Carregando...';
+  const category = data
+    ? categoryLabel(service.nomeCategoria) || 'Categoria não informada'
+    : 'Carregando…';
   const seller = data ? service.nomeFreelancer || 'Freelancer Workly' : 'Carregando freelancer...';
   const description = data
     ? raw.descricao ||
@@ -121,6 +127,16 @@ export default function ServiceDetailPage() {
       'O freelancer ainda não adicionou uma descrição para este serviço.'
     : 'Carregando descrição...';
   const owner = Boolean(user && String(user.idUsuario) === String(service.idUsuario));
+  const relatedOffice = data ? officeFor({ nomeCategoria: service.nomeCategoria }) : null;
+  useEffect(() => {
+    setRelated([]);
+    if (!relatedOffice) return;
+    const controller = new AbortController();
+    categoryServices(relatedOffice.id, { signal: controller.signal })
+      .then((items) => setRelated(items.filter((item) => String(item.idServico) !== String(id)).slice(0, 3)))
+      .catch(() => setRelated([]));
+    return () => controller.abort();
+  }, [relatedOffice?.id, id]);
   const proposal = Boolean(raw.valorCombinar || service.valorCombinar);
   const freelancerMedia =
     Number(
@@ -181,264 +197,209 @@ export default function ServiceDetailPage() {
       notify('Não foi possível copiar', 'Copie pela barra do navegador.', 'info');
     }
   }
-  const shell = 'mx-auto w-[min(1120px,calc(100%-48px))] legacy-max-780:w-[calc(100%-28px)]';
+  const ownImage = service.imagemServico && !service.imagemServico.includes('servico_padrao');
+  const office = officeFor({ nomeCategoria: category });
+  const detailImage = ownImage ? service.imagemServico : office?.photo || defaultServiceImage;
+  const shell = 'mx-auto w-full max-w-[1280px] px-10 legacy-max-720:px-6';
+  const secondary =
+    'inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md border border-workly-rule bg-workly-card px-3 text-sm font-semibold text-workly-ink-warm transition-colors hover:border-workly-forest/40 disabled:opacity-60';
   return (
     <CatalogShell title={data ? `Workly - ${name}` : 'Workly - Detalhes do Serviço'}>
-      <main
-        aria-live="polite"
-        className="min-h-[calc(100vh-340px)] bg-[radial-gradient(circle_at_top_left,rgba(4,191,85,0.12),transparent_360px),linear-gradient(180deg,#ffffff_0%,#f6f8fb_260px)] dark:bg-[radial-gradient(circle_at_top_left,rgba(4,191,85,0.13),transparent_360px),linear-gradient(180deg,#0b1220_0%,#0e1726_260px)]"
-      >
+      <main aria-live="polite" className="bg-workly-paper">
         {error ? (
-          <div className={shell}>
-            <ErrorState
-              className={`${surface} mx-auto my-[60px] max-w-[560px] rounded-[22px] p-[34px] text-center`}
-            >
-              <i
-                aria-hidden="true"
-                className="fas fa-circle-exclamation mb-[14px] text-[2.4rem] text-workly-primary"
-              />
-              <h1 className="mb-2 text-[1.8rem] font-bold text-[#0f172a] dark:text-[#4ade80]">
-                {error.title}
-              </h1>
-              <p className="mb-[22px] leading-[1.6] text-[#64748b] dark:text-workly-dark-text">
-                {error.message}
-              </p>
-              <Link
-                to="/todos-servicos"
-                className={`${action} w-auto bg-[linear-gradient(135deg,#04bf55,#07d464)] px-[26px] text-white shadow-[0_14px_26px_rgba(4,191,85,0.24)]`}
-              >
+          <div className={`${shell} py-16`}>
+            <ErrorState className="mx-auto grid max-w-[520px] justify-items-center gap-3 rounded-lg border border-workly-rule bg-workly-card p-10 text-center">
+              <i aria-hidden="true" className="fas fa-circle-exclamation text-2xl text-workly-muted-warm" />
+              <h1 className="text-[1.5rem] font-semibold text-workly-ink-warm">{error.title}</h1>
+              <p className="leading-relaxed text-workly-muted-warm">{error.message}</p>
+              <Link to="/todos-servicos" className={`${action} mt-2 w-auto bg-workly-forest px-6 text-workly-on-forest`}>
                 Ver outros serviços
               </Link>
             </ErrorState>
           </div>
         ) : (
-          <section className="pt-[26px] pb-6 legacy-max-780:pt-[18px]">
-            <div className={shell}>
-              <nav
-                aria-label="Navegação"
-                className="mb-6 flex w-fit max-w-full items-center gap-2.5 overflow-x-auto rounded-full border border-[rgba(226,232,240,0.88)] bg-white/82 px-[13px] py-[9px] text-[0.86rem] leading-none font-bold whitespace-nowrap text-[#64748b] shadow-[0_10px_28px_rgba(15,23,42,0.06)] legacy-max-780:w-full dark:border-[rgba(148,163,184,0.16)] dark:bg-[rgba(18,26,42,0.94)] dark:text-[#94a3b8]"
-              >
-                <Link to="/">Início</Link>
-                <i
-                  aria-hidden="true"
-                  className="fas fa-chevron-right text-[0.68rem] opacity-[0.62]"
-                />
-                <Link to="/todos-servicos">Serviços</Link>
-                <i
-                  aria-hidden="true"
-                  className="fas fa-chevron-right text-[0.68rem] opacity-[0.62]"
-                />
-                {service.categoriaId ? (
-                  <Link
-                    className="text-[#039848]"
-                    to={`/categorias?id=${encodeURIComponent(service.categoriaId)}`}
-                  >
-                    {category}
-                  </Link>
-                ) : (
-                  <span>{category}</span>
-                )}
-              </nav>
-              <div className="mb-[22px] grid grid-cols-[minmax(0,1fr)_auto] items-end gap-[22px] legacy-max-780:grid-cols-1 legacy-max-780:items-start">
-                <div className="min-w-0">
-                  <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-workly-primary/12 px-3 py-2 text-[0.82rem] font-extrabold text-[#039848]">
-                    <i aria-hidden="true" className="fas fa-briefcase" />
-                    Detalhes do serviço
-                  </span>
-                  <h1 className="max-w-[850px] text-[3.55rem] leading-none font-bold break-words text-[#0f172a] legacy-max-780:text-[2.85rem] legacy-max-440:text-[39px] legacy-max-360:text-[32px] dark:text-[#4ade80]">
-                    {name}
-                  </h1>
-                  <p className="mt-[14px] max-w-[760px] leading-[1.7] text-[#64748b] dark:text-[#cbd5e1]">
-                    {data
-                      ? serviceSummary(description, seller, category)
-                      : 'Carregando informações principais do serviço.'}
-                  </p>
-                </div>
-                <Link
-                  to="/todos-servicos"
-                  className="inline-flex min-h-11 w-fit items-center justify-center gap-2 rounded-full border border-[rgba(148,163,184,0.22)] bg-white/78 px-4 text-[0.9rem] font-extrabold text-[#475569] hover:-translate-y-px hover:text-[#039848] dark:bg-[rgba(18,26,42,0.94)] dark:text-[#94a3b8]"
-                >
-                  <i aria-hidden="true" className="fas fa-arrow-left" />
-                  Ver outros serviços
+          <div className={`${shell} pt-8 pb-20 legacy-max-720:pt-5`}>
+            <nav aria-label="Navegação" className="flex flex-wrap items-center gap-2 text-sm text-workly-muted-warm">
+              <Link to="/todos-servicos" className="underline-offset-4 hover:underline">
+                Serviços
+              </Link>
+              <i aria-hidden="true" className="fas fa-chevron-right text-[0.6rem]" />
+              {office ? (
+                <Link to={`/categorias?id=${office.id}`} className="underline-offset-4 hover:underline">
+                  {category}
                 </Link>
-              </div>
-              <div className="grid grid-cols-[minmax(0,1fr)_340px] items-start gap-6 legacy-max-1120:grid-cols-1">
-                <div className="grid min-w-0 content-start gap-[18px]">
-                  <section
-                    aria-label="Imagem do serviço"
-                    className={`${surface} relative w-full aspect-video min-h-[390px] min-w-0 overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,#102031,#0c3b2b)] legacy-max-780:aspect-[4/3] legacy-max-780:min-h-60 legacy-max-780:rounded-[22px]`}
-                  >
-                    <img
-                      src={service.imagemServico || defaultServiceImage}
-                      alt={data ? `Imagem do serviço ${name}` : 'Imagem do serviço'}
-                      loading="eager"
-                      onError={(event) => fallbackImage(event, defaultServiceImage)}
-                      className="block h-full min-h-[inherit] w-full bg-[#0f172a] object-cover"
-                    />
-                    <div
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_62%,rgba(15,23,42,0.16))]"
-                    />
-                  </section>
-                  <div
-                    aria-label="Resumo do serviço"
-                    className="grid grid-cols-3 gap-3 legacy-max-780:grid-cols-1"
-                  >
-                    {[
-                      ['fa-layer-group', 'Categoria', data ? category : '--'],
-                      [
-                        'fa-calendar-plus',
-                        'Publicado em',
-                        data ? serviceDate(service, 'Recentemente') : '--'
-                      ],
-                      ['fa-user-check', 'Freelancer', data ? seller : '--']
-                    ].map(([icon, label, value]) => (
-                      <div
-                        key={label}
-                        className={`${surface} flex min-w-0 items-center gap-[13px] rounded-[18px] p-[15px]`}
-                      >
-                        <i
-                          aria-hidden="true"
-                          className={`fas ${icon} inline-flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-xl bg-workly-primary/12 text-workly-primary`}
-                        />
-                        <div className="min-w-0">
-                          <span className="block text-[0.76rem] font-extrabold text-[#64748b] dark:text-[#94a3b8]">
-                            {label}
-                          </span>
-                          <strong className="mt-[3px] block max-w-[170px] truncate text-[0.95rem] font-[850] text-[#0f172a] dark:text-[#f8fafc]">
-                            {value}
-                          </strong>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <Description title="O que está incluído" kicker="Descrição">
-                    {description}
-                  </Description>
-                  {(raw.extra || service.extra) && (
-                    <Description title="Informações adicionais" kicker="Detalhes">
-                      {raw.extra || service.extra}
-                    </Description>
-                  )}
-                </div>
-                <aside
-                  aria-label="Ações do serviço"
-                  className={`${surface} sticky top-[92px] rounded-3xl p-5 legacy-max-1120:static legacy-max-1120:max-w-[520px]`}
-                >
-                  <div className="flex items-center gap-[13px] rounded-[18px] border border-workly-primary/[0.16] bg-[linear-gradient(135deg,rgba(4,191,85,0.1),rgba(255,255,255,0.72))] p-3 legacy-max-440:items-start dark:border-[rgba(134,239,172,0.16)] dark:bg-[linear-gradient(135deg,rgba(4,191,85,0.13),rgba(18,26,42,0.72))]">
+              ) : (
+                <span>{category}</span>
+              )}
+            </nav>
+            <div className="mt-5 grid gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+                <h1 className="max-w-[30ch] font-workly-display text-[clamp(2rem,4vw,3.25rem)] leading-[1.05] font-semibold tracking-[-0.025em] break-words text-balance text-workly-ink-warm [font-variation-settings:'opsz'_96]">
+                  {name}
+                </h1>
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.95rem] text-workly-muted-warm">
+                  <span className="inline-flex items-center gap-2">
                     <img
                       src={service.fotoPerfil || defaultProfileImage}
-                      alt="Foto do freelancer"
+                      alt=""
                       onError={(event) => fallbackImage(event, defaultProfileImage)}
-                      className="h-[54px] w-[54px] shrink-0 rounded-full border-[3px] border-white bg-[#e2e8f0] object-cover shadow-[0_10px_22px_rgba(15,23,42,0.12)] dark:border-white/12"
+                      className="h-7 w-7 rounded-full bg-workly-sunken object-cover"
                     />
-                    <div className="flex min-w-0 flex-col gap-[3px]">
-                      <span className="truncate text-[0.98rem] leading-[1.2] font-[850] text-[#0f172a] legacy-max-440:whitespace-normal dark:text-[#f8fafc]">
+                    {service.idUsuario ? (
+                      <Link to={`/perfil-publico?id=${service.idUsuario}`} className="font-semibold text-workly-ink-warm underline-offset-4 hover:underline">
                         {seller}
-                      </span>
-                      <span className="truncate text-[0.82rem] leading-[1.35] text-[#64748b] legacy-max-440:whitespace-normal dark:text-[#94a3b8]">
-                        {data ? category : 'Profissional da Workly'}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5 text-[0.78rem] font-extrabold text-[#0f8f45]">
-                        <i
-                          aria-hidden="true"
-                          className="fas fa-star text-[0.72rem] text-[#f59e0b]"
-                        />
-                        {freelancerMedia && freelancerTotal
-                          ? `${freelancerMedia.toFixed(1).replace('.', ',')} • ${freelancerTotal} avaliações`
-                          : 'Sem avaliações ainda'}
-                      </span>
+                      </Link>
+                    ) : (
+                      <span className="font-semibold text-workly-ink-warm">{seller}</span>
+                    )}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <i aria-hidden="true" className="fas fa-star text-xs text-[#b7791f] dark:text-[#f2c14e]" />
+                    {freelancerMedia && freelancerTotal
+                      ? `${freelancerMedia.toFixed(1).replace('.', ',')} · ${freelancerTotal} ${freelancerTotal === 1 ? 'avaliação' : 'avaliações'}`
+                      : 'Sem avaliações ainda'}
+                  </span>
+                  <span>Publicado em {data ? serviceDate(service, 'data não informada') : '--'}</span>
+                </div>
+                <figure className="mt-8">
+                  <div className="relative aspect-[16/10] overflow-hidden rounded-lg bg-workly-forest-raised legacy-max-720:aspect-[4/3]">
+                    <img
+                      src={detailImage}
+                      alt={ownImage ? `Imagem do serviço ${name}` : ''}
+                      loading="eager"
+                      onError={(event) => fallbackImage(event, defaultServiceImage)}
+                      className={`h-full w-full object-cover ${ownImage ? '' : 'opacity-85 mix-blend-luminosity grayscale'}`}
+                    />
+                  </div>
+                  {!ownImage && data && (
+                    <figcaption className="mt-2 text-xs text-workly-muted-warm">
+                      Imagem ilustrativa da categoria. O freelancer ainda não enviou uma imagem própria.
+                    </figcaption>
+                  )}
+                </figure>
+              </div>
+              <aside
+                aria-label="Contratação"
+                className="self-start rounded-lg border border-workly-rule bg-workly-card p-6 lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-1"
+              >
+                <p className="text-sm text-workly-muted-warm">{proposal ? 'Valor' : 'Valor do serviço'}</p>
+                <p className="mt-1 font-workly-display text-[2.25rem] leading-none font-semibold text-workly-ink-warm tabular-nums [font-variation-settings:'opsz'_96]">
+                  {proposal ? 'A combinar' : formatCurrency(raw.preco ?? service.preco ?? 0)}
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-workly-muted-warm">
+                  {proposal
+                    ? 'Envie uma proposta para combinar escopo, prazo e valor.'
+                    : 'Confirme o escopo antes de finalizar a contratação.'}
+                </p>
+                <Button
+                  appearance="custom"
+                  onClick={purchase}
+                  className={`${action} mt-5 bg-workly-forest text-workly-on-forest hover:bg-workly-forest-raised dark:bg-workly-dark-accent dark:text-workly-night`}
+                >
+                  <i aria-hidden="true" className={`fas ${proposal ? 'fa-paper-plane' : 'fa-arrow-right'}`} />
+                  {proposal ? 'Enviar proposta' : 'Continuar contratação'}
+                </Button>
+                <div className="mt-2.5 flex gap-2">
+                  <Button appearance="custom" onClick={favorite} disabled={saving} aria-pressed={saved} className={secondary}>
+                    <i aria-hidden="true" className={`${saved ? 'fas text-[#be123c] dark:text-[#fda4af]' : 'far'} fa-heart`} />
+                    {saved ? 'Salvo' : 'Salvar'}
+                  </Button>
+                  <Button appearance="custom" onClick={copy} className={secondary}>
+                    <i aria-hidden="true" className="fas fa-link" />
+                    Copiar link
+                  </Button>
+                </div>
+                {owner && (
+                  <Link to={`/editar-servico?id=${service.idServico || id}`} className={`${secondary} mt-2 w-full`}>
+                    <i aria-hidden="true" className="fas fa-pen" />
+                    Editar serviço
+                  </Link>
+                )}
+                <ul className="mt-6 grid gap-3 border-t border-workly-rule pt-5 text-sm leading-relaxed text-workly-muted-warm">
+                  {[
+                    ['fa-file-signature', 'O pedido é registrado na página de contratação e acompanhado em Contratos.'],
+                    ['fa-comments', 'Combine prazo, escopo e revisões pelo chat do contrato antes do início.']
+                  ].map(([icon, text]) => (
+                    <li key={icon} className="grid grid-cols-[18px_minmax(0,1fr)] gap-2.5">
+                      <i aria-hidden="true" className={`fas ${icon} mt-1 text-xs text-workly-muted-warm`} />
+                      <span>{text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </aside>
+              <div className="grid min-w-0 content-start gap-10 lg:col-start-1 lg:row-start-2">
+                <Description title="Sobre este serviço" kicker="Descrição">
+                  {description}
+                </Description>
+                {(raw.extra || service.extra) && (
+                  <Description title="Informações adicionais" kicker="Detalhes">
+                    {raw.extra || service.extra}
+                  </Description>
+                )}
+                <section className="border-t border-workly-rule pt-6">
+                  <h2 className="text-[1.25rem] font-semibold text-workly-ink-warm">Sobre o freelancer</h2>
+                  <div className="mt-4 flex flex-wrap items-center gap-4">
+                    <img
+                      src={service.fotoPerfil || defaultProfileImage}
+                      alt=""
+                      onError={(event) => fallbackImage(event, defaultProfileImage)}
+                      className="h-14 w-14 rounded-full bg-workly-sunken object-cover"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-workly-ink-warm">{seller}</p>
+                      <p className="text-sm text-workly-muted-warm">{category}</p>
                     </div>
-                  </div>
-                  <div className="pt-[18px] pb-4">
-                    <span className="mb-[7px] block text-[0.8rem] font-extrabold text-[#64748b] uppercase dark:text-[#94a3b8]">
-                      Valor do serviço
-                    </span>
-                    <strong className="block text-[2.45rem] leading-none font-black text-[#0f172a] legacy-max-440:text-[1.82rem] dark:text-[#4ade80]">
-                      {proposal
-                        ? 'Valor a combinar'
-                        : formatCurrency(raw.preco ?? service.preco ?? 0)}
-                    </strong>
-                    <p className="mt-2.5 text-[0.88rem] leading-[1.55] text-[#64748b] dark:text-[#cbd5e1]">
-                      {proposal
-                        ? 'Envie uma proposta para combinar escopo, prazo e valor.'
-                        : 'Confirme o escopo antes de finalizar a contratação.'}
-                    </p>
-                  </div>
-                  <div className="grid gap-2.5">
-                    <Button
-                      appearance="custom"
-                      onClick={purchase}
-                      className={`${action} border-0 bg-[linear-gradient(135deg,#04bf55,#07d464)] text-white shadow-[0_14px_26px_rgba(4,191,85,0.24)]`}
-                    >
-                      <i
-                        aria-hidden="true"
-                        className={`fas ${proposal ? 'fa-paper-plane' : 'fa-shopping-cart'}`}
-                      />
-                      {proposal ? 'Enviar proposta' : 'Continuar contratação'}
-                    </Button>
-                    <Button
-                      appearance="custom"
-                      onClick={favorite}
-                      disabled={saving}
-                      className={`${action} border ${saved ? 'border-transparent bg-[linear-gradient(135deg,#e11d48,#fb7185)] text-white' : 'border-[rgba(225,29,72,0.14)] bg-[#fff1f2] text-[#e11d48] dark:border-[rgba(251,113,133,0.14)] dark:bg-[rgba(225,29,72,0.12)] dark:text-[#fb7185]'}`}
-                    >
-                      <i aria-hidden="true" className={`${saved ? 'fas' : 'far'} fa-heart`} />
-                      <span>{saved ? 'Salvo nos favoritos' : 'Salvar nos favoritos'}</span>
-                    </Button>
-                    <Button
-                      appearance="custom"
-                      onClick={copy}
-                      className={`${action} border border-[rgba(148,163,184,0.22)] bg-white text-[#0f172a] dark:border-[rgba(148,163,184,0.16)] dark:bg-[#182235] dark:text-[#f8fafc]`}
-                    >
-                      <i aria-hidden="true" className="fas fa-link" />
-                      Copiar link
-                    </Button>
-                  </div>
-                  <div className="mt-4 grid gap-2.5 border-t border-[rgba(148,163,184,0.22)] pt-4">
-                    {[
-                      ['fa-shield-alt', 'Use a página de contratação para registrar o pedido.'],
-                      ['fa-comments', 'Combine prazo, escopo e revisões antes do início.']
-                    ].map(([icon, text]) => (
-                      <div
-                        key={icon}
-                        className="grid grid-cols-[22px_minmax(0,1fr)] gap-2.5 text-[0.84rem] leading-[1.45] text-[#64748b] dark:text-[#cbd5e1]"
-                      >
-                        <i aria-hidden="true" className={`fas ${icon} text-workly-primary`} />
-                        <span>{text}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-[14px]">
-                    {owner && (
-                      <Link
-                        to={`/editar-servico?id=${service.idServico || id}`}
-                        className={`${action} border border-workly-primary/[0.26] bg-workly-primary/12 text-[#047a39] dark:bg-workly-primary/[0.18] dark:text-[#86efac]`}
-                      >
-                        <i aria-hidden="true" className="fas fa-pen" />
-                        Editar serviço
+                    {service.idUsuario && (
+                      <Link to={`/perfil-publico?id=${service.idUsuario}`} className={`${secondary} flex-none px-4`}>
+                        Ver perfil
                       </Link>
                     )}
                   </div>
-                </aside>
+                </section>
               </div>
             </div>
-          </section>
+            {related.length > 0 && (
+              <section aria-labelledby="related-title" className="mt-20 border-t border-workly-rule pt-10">
+                <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold tracking-[0.08em] text-workly-primary-ink uppercase">Continue explorando</p>
+                    <h2
+                      id="related-title"
+                      className="mt-2 font-workly-display text-[clamp(1.5rem,2.4vw,2rem)] leading-tight font-semibold tracking-[-0.02em] text-workly-ink-warm [font-variation-settings:'opsz'_48]"
+                    >
+                      Mais em {category}
+                    </h2>
+                  </div>
+                  {relatedOffice && (
+                    <Link
+                      to={`/categorias?id=${relatedOffice.id}`}
+                      className="inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-workly-primary-ink underline-offset-4 hover:underline"
+                    >
+                      Ver categoria <i aria-hidden="true" className="fas fa-arrow-right text-xs" />
+                    </Link>
+                  )}
+                </div>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-x-6 gap-y-10">
+                  {assignCovers(related).map((cover, index) => (
+                    <ServiceCard key={related[index].idServico || index} service={related[index]} cover={cover} />
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
         )}
         {toast && (
           <div
             role="status"
-            className="pointer-events-none fixed right-6 bottom-6 z-[12000] flex w-[min(360px,calc(100%-32px))] items-center gap-[14px] rounded-[20px] border border-[rgba(226,232,240,0.9)] bg-white/96 px-[18px] py-4 text-[#0f172a] shadow-[0_22px_60px_rgba(15,23,42,0.18)] dark:bg-[rgba(18,26,42,0.98)] dark:text-[#f8fafc]"
+            className="pointer-events-none fixed right-6 bottom-6 z-[12000] flex w-[min(360px,calc(100%-32px))] items-center gap-3.5 rounded-lg border border-workly-rule bg-workly-card px-4 py-3.5 text-workly-ink-warm shadow-[0_12px_32px_rgba(22,33,27,0.14)]"
           >
             <i
               aria-hidden="true"
-              className={`fas ${toast.type === 'success' ? 'fa-check' : 'fa-info'} grid h-[42px] w-[42px] shrink-0 place-items-center rounded-[14px] bg-workly-primary/12 text-workly-primary`}
+              className={`fas ${toast.type === 'success' ? 'fa-check' : 'fa-info'} grid h-9 w-9 shrink-0 place-items-center rounded-full bg-workly-primary-tint text-workly-primary-ink`}
             />
             <div>
-              <strong className="block text-[0.96rem] font-[850]">{toast.title}</strong>
-              <span className="mt-0.5 block text-[0.84rem] leading-[1.45] text-[#64748b] dark:text-[#94a3b8]">
-                {toast.message}
-              </span>
+              <strong className="block text-[0.95rem] font-semibold">{toast.title}</strong>
+              <span className="mt-0.5 block text-sm leading-snug text-workly-muted-warm">{toast.message}</span>
             </div>
           </div>
         )}

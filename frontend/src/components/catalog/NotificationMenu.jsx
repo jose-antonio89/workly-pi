@@ -62,10 +62,10 @@ export default function NotificationMenu() {
     }
   }
   const itemClass =
-    'grid grid-cols-[40px_minmax(0,1fr)] gap-2.5 rounded-2xl bg-workly-primary/[0.075] p-2.5 text-[#0f172a] hover:bg-workly-primary/8 dark:bg-workly-dark-accent/10 dark:text-workly-dark-text';
+    'grid grid-cols-[40px_minmax(0,1fr)] gap-2.5 rounded-lg bg-workly-primary/[0.075] p-2.5 text-workly-ink-warm hover:bg-workly-primary/8 dark:bg-workly-dark-accent/10 dark:text-workly-dark-text';
   const iconClass =
-    'grid h-10 w-10 place-items-center rounded-[14px] bg-workly-primary/12 text-workly-primary';
-  const emptyClass = 'p-[22px] text-center font-bold text-[#64748b] dark:text-[#a9b9cf]';
+    'grid h-10 w-10 place-items-center rounded-lg bg-workly-primary/12 text-workly-primary-ink';
+  const emptyClass = 'p-[22px] text-center font-bold text-workly-muted-warm dark:text-[#9aa59f]';
   return (
     <div className="relative" onClick={(event) => event.stopPropagation()}>
       <Button
@@ -77,13 +77,13 @@ export default function NotificationMenu() {
           setOpen(!open);
           if (!open) void load();
         }}
-        className={`relative grid h-[46px] w-[46px] place-items-center rounded-2xl border border-transparent text-[#0f172a] hover:-translate-y-px hover:bg-workly-primary/10 hover:text-workly-primary focus-visible:outline-2 focus-visible:outline-workly-primary legacy-max-720:h-[42px] legacy-max-720:w-[42px] legacy-max-720:rounded-[14px] dark:text-workly-dark-text ${open ? 'bg-workly-primary/10 text-workly-primary' : ''}`}
+        className={`relative grid h-[46px] w-[46px] place-items-center rounded-lg border border-transparent text-workly-ink-warm hover:-translate-y-px hover:bg-workly-primary/10 hover:text-workly-primary-ink focus-visible:outline-2 focus-visible:outline-workly-primary legacy-max-720:h-[42px] legacy-max-720:w-[42px] legacy-max-720:rounded-lg dark:text-workly-dark-text ${open ? 'bg-workly-primary/10 text-workly-primary-ink' : ''}`}
       >
         <i aria-hidden="true" className="fas fa-bell" />
         {count > 0 && (
           <span
             id="notificationBadge"
-            className="absolute -top-[5px] -right-[5px] inline-flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-[#ef4444] px-[5px] text-[0.7rem] font-black text-white shadow-[0_8px_18px_rgba(239,68,68,0.25)] dark:border-[#0a1222]"
+            className="absolute -top-[5px] -right-[5px] inline-flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-[#ef4444] px-[5px] text-[0.7rem] font-bold text-white shadow-[0_1px_2px_rgba(22,33,27,0.05)] dark:border-[#0c1411]"
           >
             {count > 99 ? '99+' : count}
           </span>
@@ -92,10 +92,10 @@ export default function NotificationMenu() {
       {open && (
         <div
           id="notificationDropdown"
-          className="absolute top-[calc(100%+14px)] right-0 z-[100000] max-h-[520px] w-[min(380px,calc(100vw-24px))] overflow-hidden rounded-[22px] border border-[rgba(148,163,184,0.18)] bg-white/98 shadow-[0_28px_70px_rgba(15,23,42,0.24)] backdrop-blur-[18px] dark:border-[rgba(94,130,172,0.22)] dark:bg-[rgba(10,18,34,0.98)] dark:shadow-[0_28px_76px_rgba(0,4,18,0.58)]"
+          className="absolute top-[calc(100%+14px)] right-0 z-[100000] max-h-[520px] w-[min(380px,calc(100vw-24px))] overflow-hidden rounded-lg border border-[rgba(120,112,96,0.18)] bg-workly-card/98 shadow-[0_1px_2px_rgba(22,33,27,0.05)]  dark:border-[rgba(170,180,172,0.22)] dark:bg-[rgba(12,20,17,0.98)] dark:shadow-none"
         >
-          <div className="flex items-center justify-between gap-3 border-b border-[rgba(148,163,184,0.14)] px-4 pt-4 pb-3">
-            <strong className="font-black">Notificações</strong>
+          <div className="flex items-center justify-between gap-3 border-b border-[rgba(120,112,96,0.14)] px-4 pt-4 pb-3">
+            <strong className="font-bold">Notificações</strong>
             <Button
               appearance="custom"
               onClick={async () => {
@@ -107,7 +107,7 @@ export default function NotificationMenu() {
                   console.error('Erro ao marcar notificações como lidas:', err);
                 }
               }}
-              className="rounded-full bg-workly-primary/10 px-2.5 py-[7px] text-[13.3333px] font-[850] text-[#039447]"
+              className="rounded-full bg-workly-primary/10 px-2.5 py-[7px] text-[13.3333px] font-bold text-[#036b33]"
             >
               Marcar lidas
             </Button>
@@ -131,11 +131,11 @@ export default function NotificationMenu() {
                       <i aria-hidden="true" className="fas fa-comments" />
                     </span>
                     <span className="grid min-w-0 gap-0.5">
-                      <strong className="truncate text-[0.9rem] font-black">
+                      <strong className="truncate text-[0.9rem] font-bold">
                         {list.messages} mensagem{list.messages > 1 ? 's' : ''} não lida
                         {list.messages > 1 ? 's' : ''}
                       </strong>
-                      <small className="line-clamp-2 text-[0.8rem] leading-[1.35] font-semibold text-[#64748b] dark:text-[#a9b9cf]">
+                      <small className="line-clamp-2 text-[0.8rem] leading-[1.35] font-semibold text-workly-muted-warm dark:text-[#9aa59f]">
                         Abra a central de mensagens para responder.
                       </small>
                     </span>
@@ -168,13 +168,13 @@ export default function NotificationMenu() {
                         />
                       </span>
                       <span className="grid min-w-0 gap-0.5">
-                        <strong className="truncate text-[0.9rem] font-black">
+                        <strong className="truncate text-[0.9rem] font-bold">
                           {item.titulo || 'Notificação'}
                         </strong>
-                        <small className="line-clamp-2 text-[0.8rem] leading-[1.35] font-semibold text-[#64748b] dark:text-[#a9b9cf]">
+                        <small className="line-clamp-2 text-[0.8rem] leading-[1.35] font-semibold text-workly-muted-warm dark:text-[#9aa59f]">
                           {item.mensagem || ''}
                         </small>
-                        <em className="text-[0.72rem] font-extrabold text-[#94a3b8] not-italic">
+                        <em className="text-[0.72rem] font-semibold text-[#8a938d] not-italic">
                           {date && !Number.isNaN(date.getTime())
                             ? date.toLocaleDateString('pt-BR', {
                                 day: '2-digit',
@@ -195,7 +195,7 @@ export default function NotificationMenu() {
             )}
           </div>
           <Link
-            className="flex justify-center border-t border-[rgba(148,163,184,0.14)] px-4 py-[13px] font-black text-workly-primary"
+            className="flex justify-center border-t border-[rgba(120,112,96,0.14)] px-4 py-[13px] font-bold text-workly-primary-ink"
             to="/mensagens"
           >
             Abrir central de mensagens

@@ -8,6 +8,7 @@ import { showAuthAlert, registrationSubmitStyles } from '../components/auth/auth
 import Button from '../components/ui/Button';
 import { ErrorState, LoadingState } from '../components/ui/Feedback';
 import { cadastrar } from '../services/authService';
+import { categoryLabel } from '../services/catalogService';
 import { areas, formatCpf, validateField, registrationPayload } from '../services/authValidation';
 
 export default function RegisterPage() {
@@ -89,68 +90,53 @@ export default function RegisterPage() {
     />
   );
   return (
-    <AuthShell>
-      {(dark) => (
+    <AuthShell floatingToggle={false}>
+      {(dark, toggleTheme) => (
         <>
-          <AuthHeader dark={dark} />
-          <section className="mx-auto flex max-w-[1200px] items-start justify-between gap-14 px-5 pt-14 pb-6 backdrop-blur-[14px] legacy-max-1200:px-[15px] legacy-max-992:flex-col legacy-max-992:items-center legacy-max-980:gap-6 legacy-max-980:pt-8 dark:border dark:border-[rgba(94,130,172,0.18)] dark:bg-[linear-gradient(160deg,rgba(14,25,42,0.94),rgba(12,20,36,0.90))] dark:shadow-[0_22px_64px_rgba(0,4,18,0.42),inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <div className="relative z-[1] w-[45%] pt-12 pr-6 pb-6 legacy-max-992:mb-[30px] legacy-max-992:w-[80%] legacy-max-992:text-center legacy-max-980:w-full legacy-max-980:px-0">
-              <h1 className="mb-[30px] text-[32px] leading-[normal] font-bold legacy-max-768:text-[28px] dark:text-[#eaf2ff]">
-                "Entre para o melhor site de freelancer já visto"
+          <AuthHeader dark={dark} onToggleTheme={toggleTheme} />
+          <section className="mx-auto grid max-w-[1280px] grid-cols-12 gap-x-6 gap-y-10 px-10 pt-14 pb-20 legacy-max-992:pt-8 legacy-max-720:px-6">
+            <div className="order-2 col-span-12 self-start lg:sticky lg:top-8 lg:order-none lg:col-span-5">
+              <figure className="relative overflow-hidden rounded-xl bg-workly-sunken legacy-max-992:hidden">
+                <img
+                  src="/assets/img/oficios/design.jpg"
+                  alt="Mesa de trabalho de designer com esboços e paleta de cores"
+                  className="aspect-[4/3] w-full object-cover"
+                />
+              </figure>
+              <h1 className="mt-8 font-workly-display text-[clamp(2rem,3.4vw,2.75rem)] leading-[1.04] font-semibold tracking-[-0.025em] text-balance text-workly-ink-warm [font-variation-settings:'opsz'_96] legacy-max-992:mt-0">
+                Do anúncio à avaliação, tudo em um só lugar.
               </h1>
-              <ul className="mb-10 legacy-max-992:inline-block legacy-max-992:text-left">
+              <ul className="mt-6 grid gap-3.5 border-t border-workly-rule pt-6">
                 {[
-                  'Referência no mercado',
-                  'Trabalho de qualidade',
-                  'Fidelidade 100% ao cliente'
+                  'Anuncie serviços em sete categorias ou encontre quem faça o seu.',
+                  'Contrate pelo valor anunciado ou envie uma proposta.',
+                  'Converse, acompanhe e avalie pelo contrato.'
                 ].map((text) => (
-                  <li
-                    key={text}
-                    className="relative mb-[15px] pl-[30px] text-lg leading-[normal]! before:absolute before:left-0 before:font-bold before:text-black before:content-['✓'] legacy-max-768:text-base dark:text-[#eaf2ff] dark:before:text-[#34d399]"
-                  >
+                  <li key={text} className="flex gap-3 leading-relaxed text-workly-muted-warm">
+                    <i aria-hidden="true" className="fas fa-check mt-1.5 text-sm text-workly-primary-ink" />
                     {text}
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="relative z-[1] w-[45%] pt-2 legacy-max-992:mb-[30px] legacy-max-992:w-[80%] legacy-max-980:w-full">
-              <h2 className="mb-5 text-2xl leading-[normal] font-bold text-[#404145] dark:text-workly-dark-text">
+            <div className="col-span-12 lg:col-span-6 lg:col-start-7">
+              <h2 className="font-workly-display text-[2rem] leading-tight font-semibold tracking-[-0.02em] text-workly-ink-warm [font-variation-settings:'opsz'_96] dark:text-[#ecebe5]">
                 Crie sua conta
               </h2>
-              <p className="font-semibold">Já tem uma conta?</p>
-              <Link
-                to="/login"
-                className="mb-[25px] block font-semibold text-[#2196f3] focus-visible:outline-2 focus-visible:outline-workly-primary dark:text-workly-dark-text"
-              >
-                Faça login
-              </Link>
-              <div>
-                {[
-                  ['google', 'Google'],
-                  ['facebook-f', 'Facebook'],
-                  ['apple', 'Apple']
-                ].map(([icon, label]) => (
-                  <Button
-                    key={icon}
-                    appearance="custom"
-                    className={`relative mb-[15px] block w-full overflow-hidden rounded-[10px] border border-[#ddd] bg-white p-3 text-center text-base leading-[normal] font-semibold transition-transform hover:-translate-y-0.5 hover:bg-[#f1f1f1] hover:shadow-[0_4px_8px_rgba(0,0,0,0.1)] focus-visible:outline-2 focus-visible:outline-workly-primary legacy-max-768:text-sm dark:border-[rgba(148,163,184,0.16)] dark:bg-[rgba(18,28,46,0.9)] dark:text-workly-dark-text ${icon === 'google' ? 'hover:border-[#4285f4] hover:text-[#4285f4]' : icon === 'facebook-f' ? 'hover:border-[#3b5998] hover:text-[#3b5998]' : 'hover:border-black hover:text-black'}`}
-                  >
-                    <i
-                      aria-hidden="true"
-                      className={`fab fa-${icon} absolute top-1/2 left-[15px] -translate-y-1/2 text-xl`}
-                    />
-                    Continue com {label}
-                  </Button>
-                ))}
-              </div>
-              <div className="relative my-[15px] text-center before:absolute before:top-1/2 before:left-0 before:w-[45%] before:border-b before:border-[#ddd] after:absolute after:top-1/2 after:right-0 after:w-[45%] after:border-b after:border-[#ddd]">
-                ou
-              </div>
+              <p className="mt-2 mb-2 text-workly-muted-warm dark:text-[#9aa59f]">
+                Já tem uma conta?{' '}
+                <Link to="/login" className="font-semibold text-workly-primary-ink underline-offset-4 hover:underline dark:text-workly-dark-accent">
+                  Faça login
+                </Link>
+              </p>
               <form id="formCadastro" onSubmit={submit} className="mt-5" aria-busy={busy}>
-                {field('nome', 'Nome Completo*', { required: true })}
+                {field('nome', 'Nome completo*', { required: true })}
                 {field('email', 'E-mail*', { required: true, type: 'email' })}
-                {field('senha', 'Senha*', { required: true, type: 'password', minLength: 8 })}
-                {field('confirmar_senha', 'Confirmar Senha*', { required: true, type: 'password' })}
+                <div className="grid gap-x-4 sm:grid-cols-2">
+                  {field('senha', 'Senha*', { required: true, type: 'password', minLength: 8 })}
+                  {field('confirmar_senha', 'Confirmar senha*', { required: true, type: 'password' })}
+                </div>
+                <div className="grid gap-x-4 sm:grid-cols-2">
                 {field('cpf', 'CPF*', {
                   required: true,
                   maxLength: 14,
@@ -161,6 +147,7 @@ export default function RegisterPage() {
                   onChange: (event) => setCpf(formatCpf(event.target.value))
                 })}
                 {field('telefone', 'Telefone')}
+                </div>
                 {field('tipo_conta', 'Você é*', {
                   as: 'select',
                   required: true,
@@ -174,20 +161,22 @@ export default function RegisterPage() {
                   children: (
                     <>
                       <option value="">Selecione...</option>
-                      <option value="Freelancer">Freelancer (Oferecer serviços)</option>
-                      <option value="Contratante">Contratante (Contratar serviços)</option>
+                      <option value="Freelancer">Freelancer (oferecer serviços)</option>
+                      <option value="Contratante">Contratante (contratar serviços)</option>
                     </>
                   )
                 })}
                 <div hidden={tipo !== 'Freelancer'}>
-                  {field('area_atuacao', 'Área de Atuação*', {
+                  {field('area_atuacao', 'Área de atuação*', {
                     as: 'select',
                     required: tipo === 'Freelancer',
                     children: (
                       <>
                         <option value="">Selecione sua área...</option>
                         {areas.map((area) => (
-                          <option key={area}>{area}</option>
+                          <option key={area} value={area}>
+                            {categoryLabel(area)}
+                          </option>
                         ))}
                       </>
                     )
@@ -207,22 +196,22 @@ export default function RegisterPage() {
                     <label
                       htmlFor={id}
                       aria-hidden="true"
-                      className="pointer-events-none absolute top-0 left-0 h-5 w-5 rounded border border-[#ddd] bg-white peer-checked:border-workly-primary peer-checked:bg-workly-primary peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-workly-primary after:absolute after:top-[3px] after:left-[7px] after:hidden after:h-2.5 after:w-[5px] after:rotate-45 after:border-r-2 after:border-b-2 after:border-white peer-checked:after:block"
+                      className="pointer-events-none absolute top-0 left-0 h-5 w-5 rounded border border-workly-rule bg-workly-card peer-checked:border-workly-forest peer-checked:bg-workly-forest peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-workly-primary after:absolute after:top-[3px] after:left-[7px] after:hidden after:h-2.5 after:w-[5px] after:rotate-45 after:border-r-2 after:border-b-2 after:border-white peer-checked:after:block"
                     />
                     <label
                       htmlFor={id}
-                      className="mb-2 block cursor-pointer text-[0.95rem] font-semibold text-[#333] legacy-max-576:text-[13px] dark:text-workly-dark-text"
+                      className="mb-2 block cursor-pointer text-[0.95rem] text-workly-ink-warm legacy-max-576:text-sm dark:text-workly-dark-text"
                     >
                       {id === 'termos' ? (
                         <>
                           Eu li e aceito os{' '}
-                          <a href="#" className="text-workly-primary hover:underline">
+                          <span className="font-semibold">
                             Termos de Serviço
-                          </a>{' '}
+                          </span>{' '}
                           e{' '}
-                          <a href="#" className="text-workly-primary hover:underline">
+                          <span className="font-semibold">
                             Política de Privacidade
-                          </a>
+                          </span>
                           *
                         </>
                       ) : (
@@ -230,7 +219,7 @@ export default function RegisterPage() {
                       )}
                     </label>
                     {states[id] && (
-                      <ErrorState className="text-[0.83333rem] text-[#e74c3c] dark:text-workly-dark-text">
+                      <ErrorState className="text-[0.85rem] text-[#be123c] dark:text-[#fda4af]">
                         {states[id]}
                       </ErrorState>
                     )}
@@ -242,7 +231,7 @@ export default function RegisterPage() {
                   disabled={busy}
                   className={registrationSubmitStyles}
                 >
-                  {busy ? <LoadingState inline message="Criando conta..." /> : 'Criar Conta'}
+                  {busy ? <LoadingState inline message="Criando conta…" /> : 'Criar conta'}
                 </Button>
                 {apiError && <ErrorState className="sr-only">{apiError}</ErrorState>}
               </form>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { assignCovers } from '../components/home/offices';
 import { Link } from 'react-router';
 import CatalogShell from '../components/catalog/CatalogShell';
 import ServiceCard from '../components/catalog/ServiceCard';
@@ -52,7 +53,7 @@ export default function ProfilePage() {
             <div
               role="tablist"
               aria-label="Perfil"
-              className="mb-[30px] flex overflow-hidden rounded-[10px] bg-white shadow-[0_5px_15px_rgba(0,0,0,0.05)] dark:border dark:border-[#94a3b8]/10 dark:bg-[#0f172a]/72"
+              className="mb-8 flex gap-1 overflow-x-auto border-b border-workly-rule [scrollbar-width:none]"
             >
               {['Dashboard', 'Serviços', 'Avaliações', 'Configurações'].map((label) => (
                 <button
@@ -72,7 +73,7 @@ export default function ProfilePage() {
                     setTab(label);
                     event.currentTarget.parentElement.scrollLeft = 0;
                   }}
-                  className={`flex-1 px-[25px] py-[15px] text-center font-semibold focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-workly-primary legacy-max-480:px-[15px] legacy-max-480:py-2.5 legacy-max-480:text-[0.9rem] ${tab === label ? 'bg-workly-primary text-white dark:bg-[linear-gradient(135deg,#22c55e,#16a34a)] dark:text-[#07111f]' : 'hover:bg-[#e4e4e4] dark:text-workly-dark-text dark:hover:bg-[#22c55e]/8'}`}
+                  className={`relative -mb-px shrink-0 border-b-2 px-4 py-3 text-[0.95rem] font-semibold whitespace-nowrap transition-colors ${tab === label ? 'border-workly-forest text-workly-ink-warm dark:border-workly-dark-accent' : 'border-transparent text-workly-muted-warm hover:text-workly-ink-warm'}`}
                 >
                   {label}
                 </button>
@@ -83,10 +84,10 @@ export default function ProfilePage() {
             </div>
             <section id="services-tab" role="tabpanel" hidden={tab !== 'Serviços'}>
               <div className="mb-[30px] flex flex-wrap items-center justify-between gap-4">
-                <h2 className="text-2xl font-bold text-workly-primary">
+                <h2 className="text-[1.375rem] font-semibold text-workly-ink-warm">
                   Meus Serviços
                   {String(data.user.tipoConta).toLowerCase().includes('contratante') && (
-                    <span className="text-[0.9rem] font-medium text-[#64748b]">
+                    <span className="text-[0.9rem] font-medium text-workly-muted-warm">
                       {' '}
                       — opcional para contas contratantes
                     </span>
@@ -94,15 +95,15 @@ export default function ProfilePage() {
                 </h2>
                 <Link
                   to="/anuncio"
-                  className="rounded-lg bg-workly-primary px-5 py-3 font-semibold text-white"
+                  className="rounded-lg bg-workly-forest px-5 py-3 font-semibold text-white"
                 >
                   <i aria-hidden="true" className="fas fa-plus" /> Adicionar Serviço
                 </Link>
               </div>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-[25px]">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-x-6 gap-y-10">
                 {data.services.length ? (
-                  data.services.map((service) => (
-                    <ServiceCard key={service.idServico} service={service} owner />
+                  data.services.map((service, index) => (
+                    <ServiceCard key={service.idServico} service={service} cover={assignCovers(data.services)[index]} owner />
                   ))
                 ) : (
                   <EmptyState className="py-5 text-center">
@@ -112,12 +113,12 @@ export default function ProfilePage() {
               </div>
             </section>
             <section id="reviews-tab" role="tabpanel" hidden={tab !== 'Avaliações'}>
-              <h2 className="mb-[30px] text-2xl font-bold text-workly-primary">
+              <h2 className="mb-[30px] text-[1.375rem] font-semibold text-workly-ink-warm">
                 Avaliações dos Clientes
               </h2>
               <div className={`${panel} mb-[30px] p-[25px] flex flex-wrap gap-[30px]`}>
                 <div className="text-center">
-                  <strong className="block text-[3rem] font-bold text-workly-primary">
+                  <strong className="block text-[3rem] font-bold text-workly-primary-ink">
                     {formatRating(rating)}
                   </strong>
                   <Stars value={rating} />
@@ -135,9 +136,9 @@ export default function ProfilePage() {
                         <span>
                           {note} <i aria-hidden="true" className="fas fa-star text-[#f59e0b]" />
                         </span>
-                        <div className="h-2 overflow-hidden rounded-full bg-[#e4e4e4] dark:bg-[#1e293b]">
+                        <div className="h-2 overflow-hidden rounded-full bg-[#ddd8cc] dark:bg-[#24302a]">
                           <span
-                            className="block h-full bg-workly-primary"
+                            className="block h-full bg-workly-forest"
                             style={{
                               width:
                                 Math.round(
@@ -169,11 +170,11 @@ export default function ProfilePage() {
                       />
                       <div className="min-w-0 flex-1">
                         <h4 className="font-bold">{review.autor?.nome || 'Cliente'}</h4>
-                        <p className="text-sm text-[#64748b]">
+                        <p className="text-sm text-workly-muted-warm">
                           {review.servico?.nome || 'Serviço avaliado'}
                         </p>
                       </div>
-                      <span className="text-xs text-[#64748b]">
+                      <span className="text-xs text-workly-muted-warm">
                         {review.createdAt
                           ? new Date(review.createdAt).toLocaleDateString('pt-BR')
                           : ''}
@@ -201,7 +202,7 @@ export default function ProfilePage() {
               id="settings-tab"
               role="tabpanel"
               hidden={tab !== 'Configurações'}
-              className="relative left-1/2 mt-2.5 w-screen -translate-x-1/2 p-[25px] pt-[35px]"
+              className="mt-2.5 w-full min-w-0"
             >
               <ProfileSettings user={data.user} reload={reload} onPhoto={() => setPhoto(true)} />
             </section>

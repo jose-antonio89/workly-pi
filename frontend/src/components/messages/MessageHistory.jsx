@@ -8,13 +8,13 @@ export function ChatEmpty({ title, message, error = false, direct = false }) {
   const Component = error ? ErrorState : EmptyState;
   return (
     <Component
-      className={`grid ${direct ? 'min-h-[210px]' : 'min-h-[280px]'} content-center place-items-center gap-2 text-center text-[#64748b] dark:text-[#a9b9cf]`}
+      className={`grid ${direct ? 'min-h-[210px]' : 'min-h-[280px]'} content-center place-items-center gap-2 text-center text-workly-muted-warm dark:text-[#9aa59f]`}
     >
       <i
         aria-hidden="true"
-        className={`fas ${error ? 'fa-triangle-exclamation' : 'fa-comments'} text-[2rem] text-workly-primary`}
+        className={`fas ${error ? 'fa-triangle-exclamation' : 'fa-comments'} text-xl text-workly-muted-warm`}
       />
-      <strong className="text-[#0f172a] dark:text-[#eef4ff]">{title}</strong>
+      <strong className="text-workly-ink-warm dark:text-[#ecebe5]">{title}</strong>
       {message && <span>{message}</span>}
     </Component>
   );
@@ -31,8 +31,8 @@ export default function MessageHistory({ messages, error, sendError, direct = fa
       id={id || (direct ? 'chatMessages' : 'messageList')}
       className={
         direct
-          ? 'min-h-[340px] overflow-auto bg-[linear-gradient(180deg,#f8fbff,#f1f5f9)] p-[22px] dark:bg-[#070d1a]/48 dark:bg-none'
-          : 'h-full min-h-0 overflow-auto bg-[linear-gradient(rgba(248,251,255,0.92),rgba(241,245,249,0.96)),radial-gradient(circle_at_25%_15%,rgba(4,191,85,.08),transparent_28%)] px-[22px] py-[26px] [@media(min-height:900px)]:py-8 dark:bg-[#070d1a]/52 dark:bg-none'
+          ? 'min-h-[340px] overflow-auto bg-workly-paper p-4 sm:p-6'
+          : 'h-full min-h-0 overflow-auto bg-workly-paper px-4 py-6 sm:px-6'
       }
     >
       {error ? (
@@ -57,7 +57,7 @@ export default function MessageHistory({ messages, error, sendError, direct = fa
             <article
               key={m.idMensagem || m.id_mensagem}
               data-message-id={m.idMensagem || m.id_mensagem}
-              className={`${direct ? 'mb-3' : 'mb-3.5'} grid gap-2.5 ${direct ? 'max-w-[86%] legacy-max-640:max-w-[96%]' : 'max-w-[min(680px,86%)] legacy-max-640:max-w-[96%]'} ${mine ? `ml-auto ${direct ? 'grid-cols-[minmax(0,1fr)_38px]' : 'grid-cols-[minmax(0,1fr)_40px]'}` : `${direct ? 'grid-cols-[38px_minmax(0,1fr)]' : 'grid-cols-[40px_minmax(0,1fr)]'}`}`}
+              className={`${direct ? 'mb-3' : 'mb-3.5'} grid w-fit gap-2.5 ${direct ? 'max-w-[86%] legacy-max-640:max-w-[96%]' : 'max-w-[min(680px,86%)] legacy-max-640:max-w-[96%]'} ${mine ? `ml-auto ${direct ? 'grid-cols-[minmax(0,1fr)_38px]' : 'grid-cols-[minmax(0,1fr)_40px]'}` : `${direct ? 'grid-cols-[38px_minmax(0,1fr)]' : 'grid-cols-[40px_minmax(0,1fr)]'}`}`}
             >
               <img
                 src={m.remetente?.fotoPerfil || defaultProfileImage}
@@ -69,20 +69,20 @@ export default function MessageHistory({ messages, error, sendError, direct = fa
                 className={`${direct ? 'h-[38px] w-[38px]' : 'h-10 w-10'} rounded-full object-cover ${mine ? 'col-start-2 row-start-1' : ''}`}
               />
               <div
-                className={`${mine ? 'col-start-1 row-start-1' : ''} min-w-0 border shadow-[0_10px_22px_rgba(15,23,42,0.055)] ${direct ? 'rounded-2xl px-[13px] py-[11px]' : 'rounded-2xl px-4 py-3.5'} ${mine ? (direct ? 'border-workly-primary/18 bg-workly-primary/12 dark:border-[#4ade80]/18 dark:bg-[rgba(74,222,128,.12)]' : 'border-workly-primary/22 bg-[linear-gradient(180deg,rgba(206,247,224,0.95),rgba(197,241,217,0.95))] dark:border-[#4ade80]/20 dark:bg-[#4ade80]/13 dark:bg-none') : 'border-[#94a3b8]/16 bg-white dark:border-[#5e82ac]/20 dark:bg-[#0f172a]/88'}`}
+                className={`${mine ? 'col-start-1 row-start-1 rounded-br-sm bg-workly-forest text-workly-on-forest dark:bg-[#1d5a43]' : 'rounded-bl-sm border border-workly-rule bg-workly-card'} min-w-0 rounded-lg px-4 py-3`}
               >
                 <div
-                  className={`flex items-center justify-between gap-3 ${direct ? 'mb-[5px] text-[0.8rem] legacy-max-640:flex-wrap' : 'mb-2 text-[0.78rem]'} text-[#0f172a] dark:text-[#eef4ff]`}
+                  className={`flex items-center justify-between gap-3 ${direct ? 'mb-[5px] text-[0.8rem] legacy-max-640:flex-wrap' : 'mb-2 text-[0.78rem]'} ${mine ? 'text-workly-on-forest' : 'text-workly-ink-warm'}`}
                 >
-                  <strong className={direct ? '' : 'text-[0.82rem] font-black'}>
+                  <strong className="text-[0.82rem] font-semibold">
                     {mine ? 'Você' : m.remetente?.nome || 'Usuário'}
                   </strong>
-                  <span className="text-[0.76rem] font-extrabold whitespace-nowrap text-[#7c8ba1] dark:text-[#8fa3c4]">
+                  <span className="text-[0.75rem] whitespace-nowrap tabular-nums opacity-75">
                     {time}
                   </span>
                 </div>
                 <p
-                  className={`whitespace-pre-wrap [overflow-wrap:anywhere] ${direct ? 'leading-[1.5] text-[#334155]' : `text-[0.98rem] leading-[1.62] font-medium legacy-max-640:text-[0.94rem] ${mine ? 'text-[#18372b] dark:text-[#e8fff1]' : 'text-[#253248]'}`} ${direct ? 'dark:text-[#eef4ff]' : 'dark:text-[#dbeafe]'}`}
+                  className={`whitespace-pre-wrap [overflow-wrap:anywhere] text-[0.95rem] leading-[1.65] ${mine ? 'text-workly-on-forest' : 'text-workly-ink-warm'}`}
                 >
                   {m.texto || ''}
                 </p>
@@ -102,7 +102,7 @@ export default function MessageHistory({ messages, error, sendError, direct = fa
         />
       )}
       {sendError && (
-        <ErrorState className="mx-auto my-3 w-fit max-w-[80%] rounded-[14px] bg-[#fff1f2] px-3 py-2.5 font-extrabold text-[#be123c]">
+        <ErrorState className="mx-auto my-3 w-fit max-w-[80%] rounded-md bg-[#fde8e8] px-3 py-2.5 text-sm font-medium text-[#9b1c1c] dark:bg-[#fda4af]/15 dark:text-[#fda4af]">
           {sendError}
         </ErrorState>
       )}

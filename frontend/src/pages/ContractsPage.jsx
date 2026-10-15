@@ -49,6 +49,17 @@ export default function ContractsPage() {
       active = false;
     };
   }, [load, params]);
+  // Arriving from a confirmation with ?contrato= brings that row into view and marks it briefly.
+  const focusId = params.get('contrato');
+  useEffect(() => {
+    if (!focusId || !items?.length) return;
+    const row = document.querySelector(`[data-contract-id="${CSS.escape(focusId)}"]`);
+    if (!row) return;
+    row.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    row.setAttribute('data-highlight', '');
+    const timer = setTimeout(() => row.removeAttribute('data-highlight'), 2400);
+    return () => clearTimeout(timer);
+  }, [focusId, items]);
   async function action(id, name) {
     try {
       await contractAction(id, name);

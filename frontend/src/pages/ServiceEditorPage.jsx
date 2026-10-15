@@ -16,21 +16,21 @@ import { serviceFormPayload, saveService } from '../services/serviceEditorServic
 import { showAuthAlert } from '../components/auth/authPresentation';
 
 const surface =
-  'rounded-[24px] border border-[#e2e8f0]/95 bg-white/96 shadow-[0_10px_26px_rgba(15,23,42,0.06)] legacy-max-760:rounded-[20px] dark:border-[#94a3b8]/18 dark:bg-[#0f172a]/92';
+  'min-w-0 border-b border-workly-rule last:border-b-0';
 const input =
-  'w-full min-w-0 rounded-[14px] border border-[#94a3b8]/28 bg-white text-[0.96rem] text-[#0f172a] outline-none focus:border-workly-primary/58 focus:shadow-[0_0_0_4px_rgba(4,191,85,0.11)] dark:border-[#94a3b8]/24 dark:bg-[#020617]/44 dark:text-[#f8fafc]';
-const label = 'mb-2 block text-[0.82rem] font-[850] text-[#475569] dark:text-[#9ca3af]';
+  'w-full min-w-0 rounded-lg border border-workly-rule bg-workly-paper/60 text-[0.96rem] text-workly-ink-warm outline-none transition-[border-color,box-shadow] focus:border-workly-primary-ink focus:shadow-[0_0_0_3px_rgba(4,191,85,0.10)]';
+const label = 'mb-2 block text-[0.82rem] font-bold text-workly-ink-warm/80 dark:text-workly-muted-warm';
 const number =
-  'grid h-[42px] w-[42px] shrink-0 place-items-center rounded-[14px] bg-workly-primary/12 font-black text-workly-primary';
+  'grid h-9 w-9 shrink-0 place-items-center rounded-full border border-workly-rule bg-workly-paper text-sm font-semibold text-workly-primary-ink';
 function Heading({ step, title, text }) {
   return (
-    <div className="mb-5 flex items-start gap-[14px] legacy-max-760:gap-[11px]">
+    <div className="mb-6 flex items-start gap-[14px] legacy-max-760:gap-[11px]">
       <span className={number}>{step}</span>
       <div className="min-w-0">
-        <h2 className="text-[1.18rem] leading-[1.2] font-[850] text-[#0f172a] dark:text-[#f8fafc]">
+        <h2 className="font-workly-display text-[1.35rem] leading-[1.2] font-semibold text-workly-ink-warm">
           {title}
         </h2>
-        <p className="mt-[5px] text-[0.88rem] leading-[1.45] text-[#64748b] dark:text-[#9ca3af]">
+        <p className="mt-[5px] text-[0.88rem] leading-[1.45] text-workly-muted-warm dark:text-workly-muted-warm">
           {text}
         </p>
       </div>
@@ -198,29 +198,29 @@ export default function ServiceEditorPage({ editing = false }) {
     }
   }
   const button =
-    'min-h-[52px] rounded-[14px] px-[22px] font-[850] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-workly-primary legacy-max-760:w-full disabled:opacity-72';
+    'inline-flex items-center justify-center gap-2 min-h-[48px] rounded-lg px-[22px] font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-workly-primary legacy-max-760:w-full disabled:opacity-72';
   return (
     <CatalogShell title={editing ? 'Editar anúncio - Workly' : 'Criar anúncio - Workly'}>
       <main className="workly-editor-page mx-auto w-[calc(100%-48px)] max-w-[1160px] pt-[34px] pb-[76px] legacy-max-760:w-[calc(100%-28px)] legacy-max-760:pt-6 legacy-max-760:pb-14">
-        <section className="mb-6 max-w-[800px]">
-          <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-workly-primary/12 px-3 py-2 text-[0.82rem] font-[850] text-[#039848]">
+        <section className="mb-9 max-w-[800px] border-l-2 border-workly-primary-ink pl-5">
+          <span className="sr-only">
             <i
               aria-hidden="true"
               className={`fas ${editing ? 'fa-pen-to-square' : 'fa-plus-circle'}`}
             />
             {editing ? 'Editar serviço' : 'Novo serviço'}
           </span>
-          <h1 className="m-0 text-[4.3rem] leading-[0.95] font-bold break-words text-[#0f172a] legacy-max-1200:text-[3rem] legacy-max-820:text-[2.4rem] legacy-max-760:text-[2.35rem] dark:text-[#f8fafc]">
+          <h1 className="font-workly-display m-0 text-[2.25rem] leading-[1.1] font-semibold tracking-[-0.02em] text-balance break-words text-workly-ink-warm legacy-max-820:text-[2rem] legacy-max-760:text-[1.75rem] dark:text-[#faf9f6]">
             {editing && !ready
               ? 'Carregando anúncio...'
               : editing
                 ? 'Editar anúncio'
-                : 'Criar anúncio'}
+                : 'Apresente seu trabalho'}
           </h1>
-          <p className="mt-[14px] max-w-[720px] text-base leading-[1.65] text-[#475569] dark:text-[#9ca3af]">
+          <p className="mt-[14px] max-w-[720px] text-base leading-[1.65] text-workly-ink-warm/80 dark:text-workly-muted-warm">
             {editing
               ? 'Atualize as informações do serviço, a capa, os entregáveis e o valor exibido para o cliente.'
-              : 'Cadastre um serviço com título, categoria, descrição, entregáveis, capa e preço.'}
+              : 'Transforme o que você faz em uma proposta clara. Cuide dos detalhes; seu próximo cliente começa por aqui.'}
           </p>
         </section>
         {!ready ? (
@@ -230,10 +230,10 @@ export default function ServiceEditorPage({ editing = false }) {
             ref={form}
             onSubmit={submit}
             noValidate
-            className="grid grid-cols-[minmax(0,1fr)_340px] items-start gap-[22px] legacy-max-980:grid-cols-1"
+            className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-8 legacy-max-980:grid-cols-1"
           >
-            <div className="grid min-w-0 gap-4">
-              <section className={`${surface} p-6 legacy-max-760:p-[18px]`}>
+            <div className="grid min-w-0 rounded-xl border border-workly-rule bg-workly-card px-8 legacy-max-760:px-5">
+              <section className={`${surface} py-8`}>
                 <Heading
                   step="1"
                   title="Informações principais"
@@ -243,7 +243,7 @@ export default function ServiceEditorPage({ editing = false }) {
                       : 'Use um título direto e escolha a categoria correta para o serviço aparecer no lugar certo.'
                   }
                 />
-                <div className="grid grid-cols-[230px_minmax(0,1fr)] gap-4 legacy-max-760:grid-cols-1">
+                <div className="grid grid-cols-[minmax(0,1fr)] gap-4 legacy-max-760:grid-cols-1">
                   <FormField
                     id="genero_servico"
                     name="genero_id"
@@ -259,12 +259,12 @@ export default function ServiceEditorPage({ editing = false }) {
                     appearance="custom"
                     wrapperClassName="min-w-0"
                     labelClassName={label}
-                    className={`${input} min-h-[54px] px-[15px]`}
+                    className={`${input} min-h-[50px] px-[15px]`}
                   >
                     <option value="">Selecione...</option>
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>
-                        {category.navName || category.name}
+                        {category.label}
                       </option>
                     ))}
                   </FormField>
@@ -287,11 +287,11 @@ export default function ServiceEditorPage({ editing = false }) {
                       appearance="custom"
                       wrapperClassName="min-w-0"
                       labelClassName={label}
-                      className={`${input} min-h-[54px] pl-[15px] pr-[72px] font-[750]`}
+                      className={`${input} min-h-[50px] pl-[15px] pr-[72px] font-semibold`}
                     />
                     <span
                       id="charCount"
-                      className="absolute right-[14px] bottom-[15px] text-[0.78rem] font-extrabold text-[#64748b]"
+                      className="absolute right-[14px] bottom-[15px] text-[0.78rem] font-semibold text-workly-muted-warm"
                     >
                       {values.nome.length}/70
                     </span>
@@ -328,7 +328,7 @@ export default function ServiceEditorPage({ editing = false }) {
                   'Esse texto aparece na página de detalhes do serviço.'
                 ]
               ].map(([key, fieldId, step, title, text, max, placeholder, hint]) => (
-                <section key={key} className={`${surface} p-6 legacy-max-760:p-[18px]`}>
+                <section key={key} className={`${surface} py-8`}>
                   <Heading step={step} title={title} text={text} />
                   <textarea
                     id={fieldId}
@@ -342,11 +342,11 @@ export default function ServiceEditorPage({ editing = false }) {
                     placeholder={placeholder}
                     className={`${input} block resize-y p-[15px] leading-[1.55] ${key === 'descricao' ? 'min-h-[160px]' : 'min-h-[150px]'}`}
                   />
-                  <div className="mt-2 flex justify-between gap-[14px] text-[0.82rem] leading-[1.45] text-[#64748b] dark:text-[#9ca3af]">
+                  <div className="mt-2 flex justify-between gap-[14px] text-[0.82rem] leading-[1.45] text-workly-muted-warm dark:text-workly-muted-warm">
                     <small>
                       <i
                         aria-hidden="true"
-                        className={`fas ${key === 'descricao' ? 'fa-lightbulb' : 'fa-circle-info'} mr-1 text-workly-primary`}
+                        className={`fas ${key === 'descricao' ? 'fa-lightbulb' : 'fa-circle-info'} mr-1 text-workly-primary-ink`}
                       />
                       {hint}
                     </small>
@@ -359,7 +359,7 @@ export default function ServiceEditorPage({ editing = false }) {
                   </div>
                 </section>
               ))}
-              <section className={`${surface} p-6 legacy-max-760:p-[18px]`}>
+              <section className={`${surface} py-8`}>
                 <Heading
                   step="4"
                   title="Preço"
@@ -372,9 +372,9 @@ export default function ServiceEditorPage({ editing = false }) {
                 <div className="grid grid-cols-[220px_minmax(0,1fr)] gap-[14px] legacy-max-760:grid-cols-1">
                   <label
                     htmlFor="servicePrice"
-                    className={`${input} flex min-h-[68px] items-center px-[14px] focus-within:border-workly-primary/58 ${values.valorCombinar ? 'bg-[#f8fafc]! opacity-60' : ''}`}
+                    className={`${input} flex min-h-[68px] items-center px-[14px] focus-within:border-workly-primary/58 ${values.valorCombinar ? 'opacity-50' : ''}`}
                   >
-                    <span className="mr-2 text-[1.05rem] font-[850]">R$</span>
+                    <span className="mr-2 text-[1.05rem] font-bold">R$</span>
                     <input
                       id="servicePrice"
                       name="preco"
@@ -391,7 +391,7 @@ export default function ServiceEditorPage({ editing = false }) {
                           ? 'Valor a combinar'
                           : (editing ? guide?.pricePlaceholder : guide?.priceExample) || '680'
                       }
-                      className="w-full min-w-0 border-0 bg-transparent text-[1.22rem] font-[850] outline-none"
+                      className="w-full min-w-0 border-0 bg-transparent text-[1.22rem] font-bold outline-none"
                     />
                   </label>
                   <label
@@ -406,7 +406,7 @@ export default function ServiceEditorPage({ editing = false }) {
                     />
                     <span>
                       <strong className="block text-[0.95rem]">Valor a combinar</strong>
-                      <small className="mt-0.5 block text-[0.8rem] leading-[1.35] text-[#64748b]">
+                      <small className="mt-0.5 block text-[0.8rem] leading-[1.35] text-workly-muted-warm">
                         {editing
                           ? 'Use quando o preço depender do escopo do cliente.'
                           : 'O cliente conversa antes de fechar o valor.'}
@@ -415,10 +415,10 @@ export default function ServiceEditorPage({ editing = false }) {
                   </label>
                 </div>
               </section>
-              <div className="mt-0.5 flex justify-end gap-3 legacy-max-760:flex-col-reverse">
+              <div className="border-t border-workly-rule py-6 flex justify-between gap-3 legacy-max-760:flex-col-reverse">
                 <Button
                   appearance="custom"
-                  className={`${button} border border-[#94a3b8]/28 bg-white text-[#475569] dark:bg-[#020617]/44 dark:text-[#f8fafc]`}
+                  className={`${button} border border-[#8a938d]/28 bg-workly-card text-workly-ink-warm/80 dark:bg-[#0c1411]/44 dark:text-[#faf9f6]`}
                   onClick={() =>
                     editing
                       ? navigate('/detalhe-servico?id=' + id)
@@ -433,7 +433,7 @@ export default function ServiceEditorPage({ editing = false }) {
                   type="submit"
                   appearance="custom"
                   disabled={busy}
-                  className={`${button} bg-[linear-gradient(135deg,#04bf55,#07d464)] text-white shadow-[0_14px_26px_rgba(4,191,85,0.24)]`}
+                  className={`${button} bg-workly-forest text-white shadow-[0_1px_2px_rgba(22,33,27,0.05)]`}
                 >
                   <i
                     aria-hidden="true"
@@ -450,13 +450,13 @@ export default function ServiceEditorPage({ editing = false }) {
               </div>
               {busy && <LoadingState inline message={editing ? 'Salvando...' : 'Publicando...'} />}
             </div>
-            <aside className="sticky top-[92px] grid min-w-0 gap-4 legacy-max-980:static legacy-max-980:grid-cols-2 legacy-max-760:grid-cols-1">
-              <section className={`${surface} p-[18px]`}>
+            <aside className="sticky top-6 grid min-w-0 overflow-hidden rounded-xl border border-workly-rule bg-workly-card legacy-max-980:static legacy-max-980:grid-cols-2 legacy-max-760:grid-cols-1">
+              <section className={`${surface} p-5`}>
                 <div className="flex gap-[14px]">
-                  <i aria-hidden="true" className={`fas fa-image ${number}`} />
+                  <span aria-hidden="true" className={number}><i className="fas fa-image" /></span>
                   <div>
-                    <h2 className="text-[1.18rem] leading-[1.2] font-[850]">Capa do serviço</h2>
-                    <p className="mt-[5px] text-[0.88rem] leading-[1.45] text-[#64748b]">
+                    <h2 className="font-workly-display text-[1.35rem] leading-[1.2] font-semibold">Capa do serviço</h2>
+                    <p className="mt-[5px] text-[0.88rem] leading-[1.45] text-workly-muted-warm">
                       Opcional
                     </p>
                   </div>
@@ -464,7 +464,7 @@ export default function ServiceEditorPage({ editing = false }) {
                 <div className="mt-4 grid gap-3">
                   <div
                     id="imagePreview"
-                    className="aspect-[16/10] overflow-hidden rounded-[18px] border border-[#94a3b8]/28 bg-[#0f172a]"
+                    className="aspect-[16/11] overflow-hidden rounded-lg border border-[#8a938d]/28 bg-[#16211b]"
                   >
                     <img
                       src={cover}
@@ -495,14 +495,14 @@ export default function ServiceEditorPage({ editing = false }) {
                       setDrag(false);
                       choose(event.dataTransfer.files?.[0]);
                     }}
-                    className={`grid min-h-[86px] place-items-center gap-1 rounded-[18px] border-[1.5px] border-dashed border-[#94a3b8]/50 bg-[#f8fafc]/82 p-4 text-center focus-visible:outline-2 focus-visible:outline-workly-primary dark:bg-[#020617]/44 ${drag ? 'border-workly-primary bg-workly-primary/8' : ''}`}
+                    className={`grid min-h-[86px] place-items-center gap-1 rounded-lg border-[1.5px] border-dashed border-[#8a938d]/50 bg-workly-paper/82 p-4 text-center focus-visible:outline-2 focus-visible:outline-workly-primary dark:bg-[#0c1411]/44 ${drag ? 'border-workly-primary bg-workly-primary/8' : ''}`}
                   >
                     <i
                       aria-hidden="true"
-                      className="fas fa-cloud-upload-alt text-[1.55rem] text-workly-primary"
+                      className="fas fa-cloud-upload-alt text-[1.55rem] text-workly-primary-ink"
                     />
-                    <span className="text-[0.9rem] font-[850]">Escolher imagem</span>
-                    <small className="text-[0.75rem] text-[#64748b]">PNG, JPG ou WEBP</small>
+                    <span className="text-[0.9rem] font-bold">Escolher imagem</span>
+                    <small className="text-[0.75rem] text-workly-muted-warm">PNG, JPG ou WEBP</small>
                   </button>
                   <input
                     ref={fileInput}
@@ -515,38 +515,38 @@ export default function ServiceEditorPage({ editing = false }) {
                   />
                 </div>
               </section>
-              <section aria-label="Prévia do anúncio" className={`${surface} p-[18px]`}>
+              <section aria-label="Prévia do anúncio" className={`${surface} p-5`}>
                 <div className="flex gap-[14px]">
-                  <i aria-hidden="true" className={`fas fa-eye ${number}`} />
+                  <span aria-hidden="true" className={number}><i className="fas fa-eye" /></span>
                   <div>
-                    <h2 className="text-[1.18rem] leading-[1.2] font-[850]">Prévia</h2>
-                    <p className="mt-[5px] text-[0.88rem] leading-[1.45] text-[#64748b]">
+                    <h2 className="font-workly-display text-[1.35rem] leading-[1.2] font-semibold">Prévia</h2>
+                    <p className="mt-[5px] text-[0.88rem] leading-[1.45] text-workly-muted-warm">
                       {editing
                         ? 'Resumo do anúncio atualizado'
                         : 'Como o anúncio começa a aparecer'}
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 rounded-[18px] border border-[#e2e8f0]/95 bg-[linear-gradient(180deg,#f8fafc,#ffffff)] p-4 dark:border-[#94a3b8]/18 dark:bg-transparent dark:bg-[linear-gradient(180deg,#0f172a,#0f172a)]">
+                <div className="mt-5 border-t border-workly-rule pt-5">
                   <span
                     id="previewCategory"
-                    className="inline-flex rounded-full bg-workly-primary/12 px-2.5 py-1.5 text-[0.75rem] font-[850] text-[#039848]"
+                    className="inline-flex rounded-full bg-workly-primary/12 px-2.5 py-1.5 text-[0.75rem] font-bold text-workly-primary-ink"
                   >
                     {guide?.label || 'Categoria'}
                   </span>
                   <h3
                     id="previewTitle"
-                    className="mt-3 mb-2 text-[1.05rem] leading-[1.25] font-[850] break-words"
+                    className="mt-3 mb-2 text-[1.05rem] leading-[1.25] font-bold break-words"
                   >
                     {values.nome.trim() || 'Título do anúncio'}
                   </h3>
                   <p
                     id="previewDescription"
-                    className="mb-[14px] text-[0.86rem] leading-[1.45] break-words text-[#475569] dark:text-[#9ca3af]"
+                    className="mb-[14px] text-[0.86rem] leading-[1.45] break-words text-workly-ink-warm/80 dark:text-workly-muted-warm"
                   >
                     {values.descricao.trim() || 'A descrição aparece aqui conforme você escreve.'}
                   </p>
-                  <strong id="previewPrice" className="text-[1.08rem] font-black">
+                  <strong id="previewPrice" className="text-[1.08rem] font-bold">
                     {values.valorCombinar
                       ? 'Valor a combinar'
                       : Number.isFinite(Number(values.preco)) && Number(values.preco) > 0

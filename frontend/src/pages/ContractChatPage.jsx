@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { serviceImage } from '../components/home/offices';
 import { useSearchParams } from 'react-router';
 import CatalogShell from '../components/catalog/CatalogShell';
 import { LoadingState } from '../components/ui/Feedback';
@@ -22,7 +23,7 @@ import { defaultServiceImage } from '../services/catalogService';
 import { createRequestScope } from '../services/requestScope';
 
 const pill =
-  'inline-flex items-center gap-1.5 rounded-full bg-[#f1f5f9] px-2.5 py-[7px] text-[0.82rem] font-bold text-[#475569] dark:bg-[#17233a] dark:text-[#d7e2f2]';
+  'inline-flex items-center gap-1.5 rounded-full bg-workly-sunken px-2.5 py-[7px] text-[0.82rem] font-bold text-workly-ink-warm/80 dark:bg-[#1a2621] dark:text-[#ddd8cc]';
 export default function ContractChatPage() {
   const [params] = useSearchParams(),
     id = params.get('id'),
@@ -142,7 +143,7 @@ export default function ContractChatPage() {
           </ModuleButton>
         }
       >
-        <section className="grid grid-cols-[minmax(280px,360px)_minmax(0,1fr)] items-stretch gap-[22px] legacy-max-920:grid-cols-1">
+        <section className={`grid items-start gap-6 ${error ? 'max-w-[560px]' : 'grid-cols-[320px_minmax(0,1fr)] legacy-max-920:grid-cols-1'}`}>
           <aside id="chatContractSummary" className="min-w-0">
             {error ? (
               <ModuleEmpty error icon="fa-triangle-exclamation" title={error[0]} message={error[1]}>
@@ -156,45 +157,45 @@ export default function ContractChatPage() {
                 detail="Buscando informações do serviço."
               />
             ) : (
-              <article className={`${moduleSurface} sticky top-[110px] legacy-max-920:static`}>
+              <article className="sticky top-6 overflow-hidden rounded-lg border border-workly-rule bg-workly-card legacy-max-920:static">
                 <img
-                  src={contract.imagemServico || defaultServiceImage}
+                  src={serviceImage(contract, defaultServiceImage)}
                   alt=""
                   onError={(event) => {
                     event.currentTarget.onerror = null;
                     event.currentTarget.src = defaultServiceImage;
                   }}
-                  className="h-[170px] w-full object-cover"
+                  className="aspect-[16/9] w-full bg-workly-sunken object-cover legacy-max-920:hidden"
                 />
                 <div className="p-5">
-                  <span className={pill}>{contractStatus(contract.status)}</span>
-                  <h3 className="mb-2 text-[1.15rem] font-bold">
+                  <h3 className="text-[1.05rem] leading-snug font-semibold text-workly-ink-warm">
                     {contract.nomeServico || 'Serviço'}
                   </h3>
-                  <p className="mb-3.5 leading-[1.55] text-[#64748b] dark:text-[#aebbd0]">
+                  <p className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-workly-muted-warm">
                     {String(
                       contract.descricaoServico || 'Contrato criado pela plataforma Workly.'
                     ).slice(0, 150)}
                   </p>
-                  <div className="my-3 flex flex-wrap gap-2">
+                  <dl className="mt-4 grid gap-2.5 border-t border-workly-rule pt-4 text-sm">
                     {[
-                      ['fa-user', otherUser(contract).nome || 'Usuário'],
+                      ['Status', contractStatus(contract.status)],
+                      ['Com', otherUser(contract).nome || 'Usuário'],
                       [
-                        'fa-handshake',
+                        'Contratação',
                         contract.tipoContratacao === 'fixo'
                           ? 'Preço fixo'
                           : contract.tipoContratacao === 'combinar'
                             ? 'Valor a combinar'
                             : 'Negociação'
                       ],
-                      ['fa-money-bill-wave', contractPrice(contract)[1]]
-                    ].map(([icon, text]) => (
-                      <span key={icon} className={pill}>
-                        <i aria-hidden="true" className={`fas ${icon}`} />
-                        {text}
-                      </span>
+                      ['Valor', contractPrice(contract)[1]]
+                    ].map(([label, text]) => (
+                      <div key={label} className="flex items-baseline justify-between gap-3">
+                        <dt className="text-workly-muted-warm">{label}</dt>
+                        <dd className="min-w-0 truncate text-right font-medium text-workly-ink-warm">{text}</dd>
+                      </div>
                     ))}
-                  </div>
+                  </dl>
                   <div className="mt-4 grid gap-2.5">
                     {contract.idServico && (
                       <ModuleButton
@@ -215,21 +216,22 @@ export default function ContractChatPage() {
               </article>
             )}
           </aside>
+          {!error && (
           <section
             id="chatRoom"
-            className="grid min-h-[680px] min-w-0 grid-rows-[auto_minmax(320px,1fr)_auto] overflow-hidden rounded-[26px] border border-[#94a3b8]/18 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.08)] legacy-max-920:min-h-[620px] legacy-max-640:min-h-[560px] legacy-max-640:rounded-[20px] dark:border-[#5e82ac]/22 dark:bg-transparent dark:bg-[linear-gradient(160deg,rgba(14,25,42,0.96),rgba(10,18,34,0.92))]"
+            className="grid h-[calc(100vh-260px)] min-h-[560px] min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border border-workly-rule bg-workly-card"
           >
-            <header className="border-b border-[#94a3b8]/16 bg-[radial-gradient(circle_at_12%_0%,rgba(4,191,85,.10),transparent_30%),linear-gradient(180deg,#ffffff,#f8fbff)] px-6 py-[22px] dark:bg-[#0a1222]/35 dark:bg-[radial-gradient(circle_at_12%_0%,rgba(74,222,128,.12),transparent_30%)]">
-              <span id="chatStatusLabel" className={pill}>
+            <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-workly-rule px-5 py-4">
+              <span id="chatStatusLabel" className="order-2 shrink-0 rounded-full bg-workly-primary-tint px-2.5 py-0.5 text-xs font-semibold text-workly-primary-ink">
                 {contract ? contractStatus(contract.status) : 'Contrato'}
               </span>
               <h2
                 id="chatRoomTitle"
-                className="mt-2.5 mb-1 text-[2rem] font-bold text-[#0f172a] legacy-max-800:text-[1.45rem] dark:text-[#eef4ff]"
+                className="order-1 min-w-0 truncate text-[1.125rem] font-semibold text-workly-ink-warm"
               >
                 {contract?.nomeServico || 'Mensagens'}
               </h2>
-              <p className="font-[650] text-[#64748b] dark:text-[#a9b9cf]">
+              <p className="order-3 w-full truncate text-sm text-workly-muted-warm">
                 {contract
                   ? `Conversa com ${otherUser(contract).nome || 'a outra parte'}`
                   : 'Carregando conversa...'}
@@ -249,6 +251,7 @@ export default function ContractChatPage() {
               <MessageCompose direct text={text} setText={setText} busy={busy} onSend={send} />
             )}
           </section>
+          )}
         </section>
       </ModulePage>
     </CatalogShell>

@@ -24,12 +24,12 @@ import { markNotificationRead } from '../services/notificationService';
 function ConversationEmpty({ title, message, error = false, children }) {
   const Component = error ? ErrorState : EmptyState;
   return (
-    <Component className="grid min-h-[220px] content-center justify-items-center gap-2.5 p-7 text-center font-bold text-[#64748b] dark:text-[#a9b9cf]">
+    <Component className="grid min-h-[220px] content-center justify-items-center gap-2 p-7 text-center text-sm text-workly-muted-warm">
       <i
         aria-hidden="true"
-        className={`fas ${error ? 'fa-triangle-exclamation' : title === 'Nenhuma conversa encontrada' ? 'fa-magnifying-glass' : 'fa-comments'} text-[2rem] text-workly-primary`}
+        className={`fas ${error ? 'fa-triangle-exclamation' : title === 'Nenhuma conversa encontrada' ? 'fa-magnifying-glass' : 'fa-comments'} text-xl text-workly-muted-warm`}
       />
-      <strong className="text-[#0f172a] dark:text-[#eef4ff]">{title}</strong>
+      <strong className="text-workly-ink-warm dark:text-[#ecebe5]">{title}</strong>
       <span>{message}</span>
       {children}
     </Component>
@@ -77,7 +77,10 @@ export default function MessagesPage() {
         if (!active) return;
         setContracts(all);
         setPreviews(conversationPreviews(all, summaries, obterUsuario() || {}, failed));
-        const initial = all.find((c) => contractId(c) === requested) || all[0];
+        // On narrow screens the list is the starting view unless a contract was requested.
+        const narrow = window.matchMedia('(max-width: 980px)').matches;
+        const initial =
+          all.find((c) => contractId(c) === requested) || (narrow ? undefined : all[0]);
         setSelected(initial ? contractId(initial) : '');
       } catch (error) {
         if (active) {
@@ -174,156 +177,165 @@ export default function MessagesPage() {
           .includes(term)
       )
     );
+  const statusTone =
+    active?.status === 'em_andamento' || active?.status === 'proposta_aceita'
+      ? 'bg-workly-primary-tint text-workly-primary-ink'
+      : 'bg-[#fdf3e2] text-[#8a5000] dark:bg-[#f2c14e]/15 dark:text-[#f2c14e]';
   return (
-    <CatalogShell title="Mensagens" footer="empty">
-      <main className="flex min-h-[calc(100vh-40px)] items-stretch px-[18px] pt-2.5 pb-[18px] legacy-max-980:block legacy-max-980:min-h-0 legacy-max-980:px-3 legacy-max-980:pt-3 legacy-max-980:pb-7">
-        <section className="mx-auto grid h-[calc(100vh-55px)] min-h-[780px] w-full max-w-[1420px] grid-cols-[minmax(310px,390px)_minmax(0,1fr)] overflow-hidden rounded-[30px] border border-[#94a3b8]/18 bg-white/78 shadow-[0_28px_90px_rgba(15,23,42,0.10)] backdrop-blur-[18px] [@media(min-width:981px)_and_(min-height:900px)]:h-[calc(100vh-70px)] [@media(min-width:981px)_and_(min-height:900px)]:min-h-[840px] legacy-max-980:h-auto legacy-max-980:min-h-[calc(100vh-80px)] legacy-max-980:grid-cols-1 legacy-max-640:min-h-[calc(100vh-64px)] legacy-max-640:rounded-[22px] dark:border-[#5e82ac]/22 dark:bg-[#0a1222]/86 dark:shadow-[0_32px_100px_rgba(0,4,18,0.48)]">
-          <aside className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] border-r border-[#94a3b8]/16 bg-[#f8fbff]/86 legacy-max-980:max-h-[430px] legacy-max-980:grid-rows-[auto_auto] legacy-max-980:border-r-0 legacy-max-980:border-b dark:border-[#94a3b8]/14 dark:bg-[#0a1222]/92">
-            <div className="border-b border-[#94a3b8]/14 px-[22px] pt-[22px] pb-4">
-              <span className="inline-flex items-center gap-2 rounded-full bg-workly-primary/12 px-3.5 py-2 text-[0.9rem] font-extrabold text-[#029d47]">
-                <i aria-hidden="true" className="fas fa-comments" />
-                Central
-              </span>
-              <h1
-                style={{ fontWeight: 900 }}
-                className="mt-2 mb-1 text-[2rem] leading-[1.05] text-[#0f172a] dark:text-[#eef4ff]"
-              >
-                Mensagens
-              </h1>
-              <p className="mb-4 font-[650] text-[#64748b] dark:text-[#a9b9cf]">
-                Converse dentro dos contratos ativos.
-              </p>
-              <div className="flex h-12 items-center gap-2.5 rounded-2xl border border-[#94a3b8]/22 bg-white px-3.5 shadow-[0_10px_24px_rgba(15,23,42,0.045)] focus-within:outline-2 focus-within:outline-workly-primary dark:border-[#5e82ac]/20 dark:bg-[#0f172a]/88">
-                <i aria-hidden="true" className="fas fa-search text-workly-primary" />
+    <CatalogShell title="Mensagens" footer="empty" showCategories={false} headerSearch={false}>
+      <main className="mx-auto w-full max-w-[1280px] px-10 pt-8 pb-10 legacy-max-720:px-0 legacy-max-720:pt-0 legacy-max-720:pb-0">
+        {/* Two panes on desktop; on narrow screens the list and the open conversation alternate. */}
+        <section className="grid h-[calc(100dvh-160px)] min-h-0 grid-cols-[320px_minmax(0,1fr)] overflow-hidden rounded-lg border border-workly-rule bg-workly-card  legacy-max-980:grid-cols-1 legacy-max-720:h-[calc(100dvh-70px)] legacy-max-720:min-h-0 legacy-max-720:rounded-none legacy-max-720:border-0">
+          <aside
+            className={`grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] border-r border-workly-rule legacy-max-980:border-r-0 ${active ? 'legacy-max-980:hidden' : ''}`}
+          >
+            <div className="min-w-0 border-b border-workly-rule px-5 pt-5 pb-4">
+              <h1 className="text-[1.375rem] leading-tight font-semibold text-workly-ink-warm">Mensagens</h1>
+              <p className="mt-1 mb-4 text-sm text-workly-muted-warm">Converse dentro dos contratos ativos.</p>
+              <label className="flex h-11 items-center gap-2.5 rounded-md border border-workly-rule bg-workly-paper px-3 transition-[border-color,box-shadow] focus-within:border-workly-forest focus-within:shadow-[0_0_0_3px_rgba(14,59,44,0.14)] dark:focus-within:border-workly-dark-accent">
+                <i aria-hidden="true" className="fas fa-search text-sm text-workly-muted-warm" />
                 <input
                   id="conversationSearch"
                   type="search"
                   aria-label="Buscar conversa"
-                  placeholder="Buscar conversa..."
+                  placeholder="Buscar por serviço ou pessoa"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  className="h-full min-w-0 flex-1 bg-transparent font-bold text-[#0f172a] outline-none dark:text-[#eef4ff]"
+                  className="h-full min-w-0 flex-1 bg-transparent text-[0.95rem] text-workly-ink-warm outline-none placeholder:text-workly-muted-warm focus-visible:outline-none"
                 />
-              </div>
+              </label>
             </div>
-            <div id="conversationList" className="min-h-0 overflow-auto p-3">
+            <div id="conversationList" className="min-h-0 overflow-y-auto p-2">
               {error ? (
                 <ConversationEmpty error title="Erro ao carregar conversas" message={error} />
               ) : contracts === null ? (
                 <LoadingState
                   inline
-                  message="Carregando conversas..."
-                  className="grid min-h-[220px] content-center p-7 text-center font-bold text-[#64748b]"
+                  message="Carregando conversas…"
+                  className="grid min-h-[220px] content-center p-7 text-center text-workly-muted-warm"
                 />
               ) : !contracts.length ? (
                 <ConversationEmpty
                   title="Nenhuma conversa ativa"
-                  message="Chats aparecem aqui quando existir contrato ativo."
+                  message="As conversas aparecem aqui quando houver um contrato ativo."
                 >
                   <ModuleButton to="/todos-servicos">Explorar serviços</ModuleButton>
                 </ConversationEmpty>
               ) : !filtered.length ? (
                 <ConversationEmpty
                   title="Nenhuma conversa encontrada"
-                  message="Tente buscar pelo nome do serviço ou usuário."
+                  message="Tente buscar pelo nome do serviço ou da pessoa."
                 />
               ) : (
-                filtered.map((c) => {
-                  const id = contractId(c),
-                    other = otherUser(c),
-                    preview = previews[id] || {
-                      text: c.mensagem || 'Nenhuma mensagem ainda.',
-                      unread: 0
-                    },
-                    chosen = id === selected;
-                  return (
-                    <Button
-                      appearance="custom"
-                      data-conversation={id}
-                      key={id}
-                      aria-pressed={chosen}
-                      onClick={() => {
-                        setSelected(id);
-                        setPreviews((value) => ({ ...value, [id]: { ...value[id], unread: 0 } }));
-                        if (chosen)
-                          contractMessages(id)
-                            .then(setMessages)
-                            .catch((error) => setMessageError(error.message));
-                      }}
-                      className={`relative grid w-full grid-cols-[54px_minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border p-3 text-left transition focus-visible:outline-2 focus-visible:outline-workly-primary legacy-max-640:grid-cols-[50px_minmax(0,1fr)_auto] ${chosen ? 'border-workly-primary/18 bg-white shadow-[0_14px_30px_rgba(15,23,42,0.07)] dark:border-[#5e82ac]/20 dark:bg-[#0f172a]/88' : 'border-transparent hover:border-workly-primary/18 hover:bg-white dark:hover:bg-[#0f172a]/88'}`}
-                    >
-                      <img
-                        src={other.fotoPerfil || other.foto_perfil || defaultProfileImage}
-                        alt=""
-                        onError={(event) => {
-                          event.currentTarget.onerror = null;
-                          event.currentTarget.src = defaultProfileImage;
-                        }}
-                        className="h-[54px] w-[54px] rounded-full bg-[#e8f5ee] object-cover"
-                      />
-                      <span className="grid min-w-0 gap-[3px]">
-                        <strong className="truncate text-[0.98rem] leading-[1.25] font-black text-[#0f172a] dark:text-[#eef4ff]">
-                          {other.nome || 'Usuário'}
-                        </strong>
-                        <small className="truncate text-[0.75rem] font-[750] text-[#7b8aa0] dark:text-[#8fa3c4]">
-                          {c.nomeServico || 'Serviço'}
-                        </small>
-                        <em className="line-clamp-2 text-[0.82rem] leading-[1.3] font-bold text-[#475569] not-italic dark:text-[#cbd5e1]">
-                          {preview.mine ? 'Você: ' : ''}
-                          {preview.text || 'Nenhuma mensagem ainda.'}
-                        </em>
-                      </span>
-                      <span className="flex min-w-12 self-stretch items-start justify-end pt-1">
-                        <span className="flex min-h-[22px] items-center justify-end gap-2">
-                          {preview.date && (
-                            <small className="text-[0.74rem] font-black whitespace-nowrap text-[#94a3b8]">
-                              {preview.date}
-                            </small>
-                          )}
-                          {preview.unread > 0 && (
-                            <span
-                              aria-label={`${preview.unread} mensagem${preview.unread > 1 ? 's' : ''} não lida${preview.unread > 1 ? 's' : ''}`}
-                              className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-workly-primary/16 px-[7px] text-[0.72rem] leading-none font-black text-[#04984a] dark:bg-[#4ade80]/18 dark:text-[#6ee7a8]"
-                            >
-                              {preview.unread > 9 ? '9+' : preview.unread}
+                <ul className="grid gap-0.5">
+                  {filtered.map((c) => {
+                    const id = contractId(c),
+                      other = otherUser(c),
+                      preview = previews[id] || {
+                        text: c.mensagem || 'Nenhuma mensagem ainda.',
+                        unread: 0
+                      },
+                      chosen = id === selected;
+                    return (
+                      <li key={id} className="min-w-0">
+                        <button
+                          type="button"
+                          data-conversation={id}
+                          aria-pressed={chosen}
+                          onClick={() => {
+                            setSelected(id);
+                            setPreviews((value) => ({ ...value, [id]: { ...value[id], unread: 0 } }));
+                            if (chosen)
+                              contractMessages(id)
+                                .then(setMessages)
+                                .catch((error) => setMessageError(error.message));
+                          }}
+                          className={`block w-full min-w-0 rounded-md px-3 py-3 text-left transition-colors ${chosen ? 'bg-workly-sunken shadow-[inset_3px_0_0_var(--color-workly-forest)] dark:shadow-[inset_3px_0_0_var(--color-workly-dark-accent)]' : 'hover:bg-workly-paper'}`}
+                        >
+                          <span className="grid grid-cols-[40px_minmax(0,1fr)] items-start gap-3">
+                            <img
+                              src={other.fotoPerfil || other.foto_perfil || defaultProfileImage}
+                              alt=""
+                              onError={(event) => {
+                                event.currentTarget.onerror = null;
+                                event.currentTarget.src = defaultProfileImage;
+                              }}
+                              className="h-10 w-10 rounded-full bg-workly-sunken object-cover"
+                            />
+                            <span className="grid min-w-0 gap-0.5">
+                              <span className="flex min-w-0 items-baseline gap-2">
+                                <strong className="min-w-0 flex-1 truncate text-[0.95rem] font-semibold text-workly-ink-warm">
+                                  {other.nome || 'Usuário'}
+                                </strong>
+                                {preview.date && (
+                                  <small className="shrink-0 text-xs text-workly-muted-warm tabular-nums">
+                                    {preview.date}
+                                  </small>
+                                )}
+                              </span>
+                              <span className="truncate text-[0.8rem] text-workly-muted-warm">
+                                {c.nomeServico || 'Serviço'}
+                              </span>
+                              <span className="flex min-w-0 items-center gap-2">
+                                <span className="min-w-0 flex-1 truncate text-[0.85rem] text-workly-ink-warm/80">
+                                  {preview.mine ? 'Você: ' : ''}
+                                  {preview.text || 'Nenhuma mensagem ainda.'}
+                                </span>
+                                {preview.unread > 0 && (
+                                  <span
+                                    aria-label={`${preview.unread} mensagem${preview.unread > 1 ? 's' : ''} não lida${preview.unread > 1 ? 's' : ''}`}
+                                    className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-workly-forest px-1.5 text-[0.7rem] font-semibold text-workly-on-forest dark:bg-workly-dark-accent dark:text-workly-night"
+                                  >
+                                    {preview.unread > 9 ? '9+' : preview.unread}
+                                  </span>
+                                )}
+                              </span>
                             </span>
-                          )}
-                        </span>
-                      </span>
-                    </Button>
-                  );
-                })
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </div>
           </aside>
           <section
             id="messagePanel"
-            className="min-h-0 min-w-0 bg-[#f8fbff] legacy-max-980:min-h-[760px] legacy-max-640:min-h-[700px] dark:bg-[#070d1a]/52"
+            className={`min-h-0 min-w-0 bg-workly-paper ${active ? '' : 'legacy-max-980:hidden'}`}
           >
             {active ? (
-              <article className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] legacy-max-980:min-h-[760px] legacy-max-640:min-h-[700px]">
-                <header className="flex min-h-[150px] items-center justify-between gap-[18px] border-b border-[#94a3b8]/16 bg-[radial-gradient(circle_at_10%_0%,rgba(4,191,85,.12),transparent_35%),linear-gradient(90deg,#f7fffb,#ffffff)] px-[30px] py-6 legacy-max-980:flex-col legacy-max-980:items-stretch dark:border-[#94a3b8]/14 dark:bg-[#0e1929] dark:bg-none">
-                  <div className="min-w-0">
-                    <span
-                      className={`mb-3 inline-flex rounded-full px-[11px] py-[7px] text-[0.75rem] font-black ${active.status === 'em_andamento' ? 'bg-[#2563eb]/10 text-[#2563eb]' : active.status === 'proposta_aceita' ? 'bg-[#047857]/10 text-[#047857]' : 'bg-[#f59e0b]/12 text-[#9a5b00]'}`}
-                    >
-                      {contractStatus(active.status)}
-                    </span>
-                    <h2 className="mb-2 text-[2.4rem] leading-[1.14] font-black text-[#071226] [overflow-wrap:anywhere] legacy-max-980:text-[1.55rem] [letter-spacing:-0.055em] dark:text-[#eef4ff]">
-                      {active.nomeServico || 'Contrato'}
-                    </h2>
-                    <p className="font-[750] text-[#64748b] dark:text-[#a9b9cf]">
-                      Conversa com <strong>{otherUser(active).nome || 'Usuário'}</strong>
+              <article className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto]">
+                <header className="flex items-center gap-3 border-b border-workly-rule bg-workly-card px-6 py-4 legacy-max-720:px-4">
+                  <button
+                    type="button"
+                    onClick={() => setSelected('')}
+                    aria-label="Voltar para conversas"
+                    className="hidden h-10 w-10 shrink-0 place-items-center rounded-full text-workly-muted-warm hover:bg-workly-sunken legacy-max-980:grid"
+                  >
+                    <i aria-hidden="true" className="fas fa-arrow-left" />
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                      <h2 className="min-w-0 truncate text-[1.125rem] font-semibold text-workly-ink-warm">
+                        {active.nomeServico || 'Contrato'}
+                      </h2>
+                      <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusTone}`}>
+                        {contractStatus(active.status)}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 truncate text-sm text-workly-muted-warm">
+                      Conversa com <span className="font-medium text-workly-ink-warm">{otherUser(active).nome || 'Usuário'}</span>
                     </p>
                   </div>
                   <Button
                     appearance="custom"
                     id="openContractDetails"
                     onClick={() => setDetails(true)}
-                    className="inline-flex min-h-11 shrink-0 items-center justify-center gap-[9px] rounded-[14px] border border-[#94a3b8]/26 bg-white/74 px-4 text-[0.9rem] font-black text-[#071226] shadow-[0_10px_22px_rgba(15,23,42,0.055)] hover:text-workly-primary focus-visible:outline-2 focus-visible:outline-workly-primary legacy-max-980:self-start legacy-max-640:min-h-[42px] legacy-max-640:px-[13px] legacy-max-640:text-[0.82rem] dark:border-[#5e82ac]/26 dark:bg-[#0f172a]/68 dark:text-[#eef4ff]"
+                    className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-workly-rule bg-workly-card px-3.5 text-sm font-semibold text-workly-ink-warm transition-colors hover:border-workly-forest/40"
                   >
                     <i aria-hidden="true" className="fas fa-circle-info" />
-                    Detalhes
+                    <span className="legacy-max-480:sr-only">Detalhes</span>
                   </Button>
                 </header>
                 <MessageHistory messages={messages} error={messageError} sendError={sendError} />
@@ -336,16 +348,13 @@ export default function MessagesPage() {
                 />
               </article>
             ) : (
-              <EmptyState className="grid min-h-full content-center justify-items-center gap-3 p-12 text-center text-[#64748b] dark:text-[#a9b9cf]">
-                <i
-                  aria-hidden="true"
-                  className="fas fa-message grid h-[76px] w-[76px] place-items-center rounded-[24px] bg-workly-primary/12 text-[2rem] text-workly-primary"
-                />
-                <h2 className="text-[2rem] font-bold text-[#0f172a] dark:text-[#eef4ff]">
-                  Selecione uma conversa
-                </h2>
-                <p className="max-w-[420px] leading-[1.6] font-semibold">
-                  Escolha um contrato ativo para visualizar o histórico de mensagens.
+              <EmptyState className="grid h-full content-center justify-items-center gap-3 p-12 text-center text-workly-muted-warm">
+                <span aria-hidden="true" className="grid h-14 w-14 place-items-center rounded-full bg-workly-primary-tint text-xl text-workly-primary-ink">
+                  <i className="fas fa-message" />
+                </span>
+                <h2 className="text-[1.25rem] font-semibold text-workly-ink-warm">Selecione uma conversa</h2>
+                <p className="max-w-[40ch] leading-relaxed">
+                  Escolha um contrato ativo para ver o histórico e enviar mensagens.
                 </p>
               </EmptyState>
             )}

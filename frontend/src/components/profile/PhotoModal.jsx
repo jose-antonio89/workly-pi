@@ -31,11 +31,14 @@ export default function PhotoModal({ close, reload }) {
     stage = useRef(null),
     url = useRef(''),
     file = useRef(null),
-    drag = useRef(null);
+    drag = useRef(null),
+    dialog = useRef(null),
+    loadId = useRef(0);
   const [image, setImage] = useState(null),
     [crop, setCrop] = useState({ zoom: 1, min: 1, x: 0, y: 0 }),
     [busy, setBusy] = useState(false),
-    [dragging, setDragging] = useState(false);
+    [dragging, setDragging] = useState(false),
+    [error, setError] = useState('');
   const opener = useRef(document.activeElement);
   useEffect(() => {
     const original = opener.current;
@@ -44,6 +47,23 @@ export default function PhotoModal({ close, reload }) {
       if (original?.isConnected) original.focus();
     };
   }, []);
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (event) => {
+      if (event.key === 'Escape' && !busy) { event.preventDefault(); close(); }
+      if (event.key !== 'Tab') return;
+      const items = [...dialog.current.querySelectorAll('button:not(:disabled), input:not(:disabled):not([type="file"]), [tabindex="0"]')];
+      const first = items[0], last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [busy, close]);
   function reset(value = image) {
     if (!value) return;
     const size = Math.round(stage.current?.getBoundingClientRect().width || 280);
@@ -64,7 +84,7 @@ export default function PhotoModal({ close, reload }) {
     canvas.current.width = size;
     canvas.current.height = size;
     const ctx = canvas.current.getContext('2d', { alpha: false });
-    ctx.fillStyle = '#0b1220';
+    ctx.fillStyle = '#0c1411';
     ctx.fillRect(0, 0, size, size);
     const rect = cropGeometry(image, size, crop.zoom, crop.x, crop.y);
     ctx.imageSmoothingEnabled = true;
@@ -92,38 +112,35 @@ export default function PhotoModal({ close, reload }) {
   }, [image]);
   async function select(event) {
     const selected = event.target.files?.[0];
+    event.target.value = '';
     if (!selected) return;
-    if (!selected.type.startsWith('image/')) {
-      await showAuthAlert({
-        icon: 'warning',
-        title: 'Arquivo inválido',
-        text: 'Escolha uma imagem válida para usar como foto de perfil.',
-        confirmText: 'Fechar'
-      });
-      event.target.value = '';
+    setError('');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(selected.type)) {
+      setError('Escolha uma imagem JPG, PNG ou WEBP.');
       return;
     }
-    if (url.current) URL.revokeObjectURL(url.current);
-    url.current = URL.createObjectURL(selected);
+    const request = ++loadId.current;
+    const source = URL.createObjectURL(selected);
     const loaded = new Image();
     loaded.onload = () => {
+      if (request !== loadId.current) { URL.revokeObjectURL(source); return; }
+      if (url.current) URL.revokeObjectURL(url.current);
+      url.current = source;
       setImage(loaded);
     };
-    loaded.onerror = () =>
-      showAuthAlert({
-        icon: 'error',
-        title: 'Erro ao atualizar foto',
-        text: 'Não foi possível carregar a imagem.',
-        confirmText: 'Fechar'
-      });
-    loaded.src = url.current;
+    loaded.onerror = () => {
+      URL.revokeObjectURL(source);
+      if (request === loadId.current) setError('Não foi possível abrir essa imagem. Tente outro arquivo.');
+    };
+    loaded.src = source;
   }
   useEffect(() => {
     reset();
   }, [image]);
   async function save(event) {
     event.preventDefault();
-    if (!image || !file.current?.files.length) {
+    if (busy) return;
+    if (!image) {
       await showAuthAlert({
         icon: 'warning',
         title: 'Escolha uma imagem',
@@ -191,132 +208,69 @@ export default function PhotoModal({ close, reload }) {
     setCrop((previous) => ({ ...previous, x: rect.x, y: rect.y }));
   }
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="photo-title"
-      className="fixed inset-0 z-[20000] grid overflow-y-auto bg-black/65 p-5 backdrop-blur-sm"
-      onClick={(event) => {
-        if (event.target === event.currentTarget && !busy) close();
-      }}
-    >
-      <div className="relative m-auto w-full max-w-[520px] rounded-[24px] border border-[#94a3b8]/18 bg-white p-[30px] shadow-2xl legacy-max-520:p-5 dark:bg-[#0b1424] dark:text-workly-dark-text">
-        <Button
-          appearance="custom"
-          aria-label="Fechar modal"
-          autoFocus
-          onClick={close}
-          disabled={busy}
-          className="absolute top-[14px] right-[14px] grid h-9 w-9 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-workly-primary"
-        >
-          <i aria-hidden="true" className="fas fa-xmark" />
-        </Button>
-        <h2 id="photo-title" className="mb-2 pr-8 text-2xl font-bold">
-          Alterar foto de perfil
-        </h2>
-        <p className="mb-5 text-[#64748b] dark:text-[#a9b9cf]">
-          Escolha uma imagem, ajuste o enquadramento e salve sua nova foto.
-        </p>
-        <form onSubmit={save} noValidate>
-          {!image && (
-            <div className="mb-5 grid place-items-center gap-3 rounded-[18px] border border-dashed border-[#94a3b8]/35 p-7 text-center">
-              <i aria-hidden="true" className="fas fa-image text-3xl text-workly-primary" />
-              <strong>Nenhuma imagem selecionada</strong>
-              <span>O recorte e o zoom aparecem depois que você escolher uma nova foto.</span>
-            </div>
-          )}
-          {image && (
-            <>
-              <div
-                ref={stage}
-                className={`relative mx-auto mb-5 aspect-square w-[280px] max-w-full touch-none overflow-hidden bg-[#0b1220] ${dragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-                onPointerDown={(event) => {
-                  event.preventDefault();
-                  const rect = cropGeometry(image, canvas.current.width, crop.zoom, crop.x, crop.y);
-                  drag.current = {
-                    startX: event.clientX,
-                    startY: event.clientY,
-                    x: rect.x,
-                    y: rect.y
-                  };
-                  setDragging(true);
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                }}
-                onPointerMove={move}
-                onPointerUp={(event) => {
-                  drag.current = null;
-                  setDragging(false);
-                  event.currentTarget.releasePointerCapture(event.pointerId);
-                }}
-                onPointerCancel={() => {
-                  drag.current = null;
-                  setDragging(false);
-                }}
-              >
-                <canvas
-                  ref={canvas}
-                  aria-label="Área de recorte da foto"
-                  className="block h-full w-full"
-                />
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-[10.7142857%] rounded-full border-2 border-white shadow-[0_0_0_200px_rgba(0,0,0,0.55)]"
-                />
-              </div>
-              <div className="mb-3 flex flex-wrap items-center gap-3">
-                <label htmlFor="photo-zoom">Zoom</label>
-                <input
-                  id="photo-zoom"
-                  type="range"
-                  min={crop.min}
-                  max={crop.min * 3}
-                  step="any"
-                  value={crop.zoom}
-                  onChange={(event) =>
-                    setCrop((previous) => ({ ...previous, zoom: Number(event.target.value) }))
-                  }
-                  className="min-w-0 flex-1 accent-workly-primary"
-                />
-                <Button appearance="custom" className={cancelStyle} onClick={() => reset()}>
-                  Centralizar
-                </Button>
-              </div>
-              <p className="mb-5 text-sm text-[#64748b]">
-                <i aria-hidden="true" className="fas fa-hand-pointer" /> Arraste a imagem para
-                enquadrar e use o zoom se precisar aproximar.
-              </p>
-            </>
-          )}
-          <label
-            htmlFor="nova_foto"
-            className="mb-3 inline-flex cursor-pointer items-center gap-2 text-workly-primary"
-          >
-            <i aria-hidden="true" className="fas fa-upload" /> Escolher imagem
-          </label>
-          <input
-            ref={file}
-            id="nova_foto"
-            name="nova_foto"
-            type="file"
-            accept="image/*"
-            required
-            onChange={select}
-            className="block w-full min-w-0 text-sm"
-          />
-          <div className="mt-5 flex flex-wrap gap-2.5">
-            <Button
-              type="submit"
-              appearance="custom"
-              className={saveStyle}
-              disabled={!image || busy}
-            >
-              Salvar foto
-            </Button>
-            <Button appearance="custom" className={cancelStyle} disabled={busy} onClick={close}>
-              Cancelar
-            </Button>
+    <div className="fixed inset-0 z-[20000] flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm" onClick={(event) => { if (event.target === event.currentTarget && !busy) close(); }}>
+      <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="photo-title" aria-describedby="photo-description" aria-busy={busy} className="relative my-auto w-full max-w-[440px] overflow-hidden rounded-2xl border border-workly-rule bg-workly-card text-workly-ink-warm shadow-2xl">
+        <header className="flex items-start justify-between gap-4 px-6 pt-6">
+          <div>
+            <h2 id="photo-title" className="font-workly-display text-2xl font-semibold tracking-tight">Sua foto de perfil</h2>
+            <p id="photo-description" className="mt-1.5 text-sm leading-relaxed text-workly-muted-warm">{image ? 'Ajuste a foto dentro do círculo.' : 'Uma boa foto ajuda as pessoas a reconhecer você.'}</p>
           </div>
-          {busy && <LoadingState inline message="Salvando..." />}
+          <button type="button" aria-label="Fechar" autoFocus disabled={busy} onClick={close} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-workly-muted-warm transition-colors hover:bg-workly-sunken disabled:opacity-40"><i aria-hidden="true" className="fas fa-xmark" /></button>
+        </header>
+        <form onSubmit={save} noValidate>
+          <div className="px-6 py-6">
+            <input ref={file} id="nova_foto" name="nova_foto" type="file" accept="image/jpeg,image/png,image/webp" onChange={select} disabled={busy} hidden className="hidden" />
+            {!image ? (
+              <button type="button" onClick={() => file.current.click()} className="group flex min-h-[220px] w-full flex-col items-center justify-center rounded-xl border border-dashed border-workly-rule bg-workly-paper px-5 py-8 transition-colors hover:border-workly-primary-ink hover:bg-workly-primary-tint">
+                <span className="mb-4 grid h-14 w-14 place-items-center rounded-full bg-workly-card text-xl text-workly-primary-ink"><i aria-hidden="true" className="fas fa-camera" /></span>
+                <span className="font-semibold">Escolher uma foto</span>
+                <span className="mt-2 text-sm text-workly-muted-warm">JPG, PNG ou WEBP</span>
+              </button>
+            ) : (
+              <>
+                <div ref={stage} role="group" aria-label="Enquadramento: arraste ou use as setas do teclado" tabIndex={0}
+                  onKeyDown={(event) => {
+                    const offsets = { ArrowLeft: [-8, 0], ArrowRight: [8, 0], ArrowUp: [0, -8], ArrowDown: [0, 8] };
+                    if (!offsets[event.key] || busy) return;
+                    event.preventDefault();
+                    const [x, y] = offsets[event.key];
+                    setCrop((previous) => { const safe = cropGeometry(image, canvas.current.width, previous.zoom, previous.x + x, previous.y + y); return { ...previous, x: safe.x, y: safe.y }; });
+                  }}
+                  className={`relative mx-auto aspect-square w-[280px] max-w-full touch-none overflow-hidden rounded-xl bg-workly-night ${dragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                  onPointerDown={(event) => {
+                    if (busy) return;
+                    event.preventDefault();
+                    event.currentTarget.focus();
+                    const rect = cropGeometry(image, canvas.current.width, crop.zoom, crop.x, crop.y);
+                    drag.current = { startX: event.clientX, startY: event.clientY, x: rect.x, y: rect.y };
+                    setDragging(true);
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                  }}
+                  onPointerMove={move}
+                  onPointerUp={(event) => { drag.current = null; setDragging(false); if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); }}
+                  onPointerCancel={() => { drag.current = null; setDragging(false); }}>
+                  <canvas ref={canvas} aria-label="Prévia do recorte da foto" className="block h-full w-full" />
+                  <div aria-hidden="true" className="pointer-events-none absolute inset-[10.7142857%] rounded-full border-2 border-white/90 shadow-[0_0_0_200px_rgba(0,0,0,0.65)]" />
+                </div>
+                <p className="mt-3 text-center text-xs text-workly-muted-warm">Arraste para enquadrar · Use as setas para ajustar</p>
+                <div className="mt-5 flex items-center gap-3">
+                  <label htmlFor="photo-zoom" className="text-sm font-medium">Zoom</label>
+                  <input id="photo-zoom" type="range" min={crop.min} max={crop.min * 3} step="any" value={crop.zoom} disabled={busy} aria-valuetext={`${Math.round(crop.zoom / crop.min * 100)}%`} onChange={(event) => setCrop((previous) => ({ ...previous, zoom: Number(event.target.value) }))} className="min-w-0 flex-1 accent-workly-primary-ink" />
+                  <span className="w-10 text-right text-xs text-workly-muted-warm tabular-nums">{Math.round(crop.zoom / crop.min * 100)}%</span>
+                </div>
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <button type="button" disabled={busy} onClick={() => file.current.click()} className="inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-workly-primary-ink hover:underline"><i aria-hidden="true" className="fas fa-arrow-rotate-left" />Trocar foto</button>
+                  <button type="button" disabled={busy} onClick={() => reset()} className="min-h-10 text-sm text-workly-muted-warm hover:text-workly-ink-warm">Redefinir ajustes</button>
+                </div>
+              </>
+            )}
+            {error && <p role="alert" className="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">{error}</p>}
+          </div>
+          <footer className="flex justify-end gap-3 border-t border-workly-rule bg-workly-paper/50 px-6 py-4">
+            <Button appearance="custom" className={cancelStyle} disabled={busy} onClick={close}>Cancelar</Button>
+            <Button type="submit" appearance="custom" className={`${saveStyle} disabled:cursor-not-allowed disabled:opacity-40`} disabled={!image || busy}>{busy ? 'Salvando…' : 'Salvar foto'}</Button>
+          </footer>
+          {busy && <LoadingState inline message="Atualizando sua foto…" />}
         </form>
       </div>
     </div>

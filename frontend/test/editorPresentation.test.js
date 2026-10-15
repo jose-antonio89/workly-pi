@@ -9,7 +9,7 @@ test('service editor retains fixed title sizes at desktop, tablet and mobile lim
   );
   assert.match(
     source,
-    /text-\[4\.3rem\].*legacy-max-1200:text-\[3rem\].*legacy-max-820:text-\[2\.4rem\].*legacy-max-760:text-\[2\.35rem\]/
+    /text-\[2\.25rem\].*legacy-max-820:text-\[2rem\].*legacy-max-760:text-\[1\.75rem\]/
   );
   assert.doesNotMatch(source, /fontSize[^\n]*vw|text-\[[^\]]*vw/);
 });

@@ -4,18 +4,18 @@ import Button from './Button';
 import { EmptyState, ErrorState } from './Feedback';
 
 export const moduleSurface =
-  'overflow-hidden rounded-[24px] border border-[#e2e8f0]/80 bg-white/94 shadow-[0_18px_45px_rgba(15,23,42,0.07)] dark:border-[#94a3b8]/16 dark:bg-[#0f172a]/92';
+  'overflow-hidden rounded-lg border border-workly-rule bg-workly-card dark:border-white/10 dark:bg-workly-night-raised';
 export const moduleInput =
-  'w-full min-w-0 rounded-xl border border-[#dbe4ef] bg-white px-3 py-2.5 outline-none focus:border-workly-primary focus:shadow-[0_0_0_4px_rgba(4,191,85,0.12)] dark:border-[#94a3b8]/20 dark:bg-[#0b1424] dark:text-[#f8fafc]';
+  'w-full min-w-0 rounded-md border border-workly-rule bg-workly-card px-3 py-2.5 text-workly-ink-warm outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-workly-muted-warm focus:border-workly-forest focus:shadow-[0_0_0_3px_rgba(14,59,44,0.14)] disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/15 dark:bg-workly-night dark:text-[#ecebe5] dark:focus:border-workly-dark-accent';
 const buttonBase =
-  'inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[14px] px-[18px] py-3 font-extrabold transition hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-workly-primary disabled:opacity-60';
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-[18px] text-[0.95rem] font-semibold transition-[background-color,border-color,color,transform] duration-150 ease-workly-out motion-safe:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100';
 export function ModuleButton({ to, tone = 'primary', className = '', children, ...props }) {
   const color =
     tone === 'primary'
-      ? 'bg-workly-primary text-white shadow-[0_14px_26px_rgba(4,191,85,0.20)]'
+      ? 'bg-workly-forest text-workly-on-forest hover:bg-workly-forest-raised dark:bg-workly-dark-accent dark:text-workly-night'
       : tone === 'danger'
-        ? 'bg-[#fff1f2] text-[#e11d48]'
-        : 'border border-[#dbe4ef] bg-white text-[#101827] dark:border-[#2d3b52] dark:bg-[#111c2f] dark:text-[#eef5ff]';
+        ? 'bg-[#fde8e8] text-[#9b1c1c] hover:bg-[#fbd5d5] dark:bg-[#fda4af]/15 dark:text-[#fda4af]'
+        : 'border border-workly-rule bg-workly-card text-workly-ink-warm hover:border-workly-forest/40 dark:border-white/15 dark:bg-workly-night-raised dark:text-[#ecebe5]';
   return to ? (
     <Link to={to} className={`${buttonBase} ${color} ${className}`} {...props}>
       {children}
@@ -23,7 +23,6 @@ export function ModuleButton({ to, tone = 'primary', className = '', children, .
   ) : (
     <Button
       appearance="custom"
-      style={{ fontSize: '13.3333px' }}
       className={`${buttonBase} ${color} ${className}`}
       {...props}
     >
@@ -40,23 +39,22 @@ export function ModulePage({
   heroClassName = ''
 }) {
   return (
-    <main className="min-h-[70vh] bg-[linear-gradient(135deg,#f5f9fc,#eef9f2)] pt-[42px] pb-[70px] text-[#101827] dark:bg-[linear-gradient(135deg,#07111f,#0d1a2b)] dark:text-[#eef5ff]">
-      <div className="mx-auto max-w-[1180px] px-6">
+    <main className="min-h-[70vh] bg-workly-paper pt-10 pb-20 text-workly-ink-warm dark:bg-workly-night dark:text-[#ecebe5]">
+      <div className="mx-auto max-w-[1280px] px-10 legacy-max-720:px-6">
         {title && (
           <div
-            className={`mb-7 flex items-center justify-between gap-[18px] legacy-max-920:flex-col legacy-max-920:items-stretch ${heroClassName}`}
+            className={`mb-8 flex items-end justify-between gap-[18px] border-b border-workly-rule pb-6 dark:border-white/10 legacy-max-920:flex-col legacy-max-920:items-stretch ${heroClassName}`}
           >
             <div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-workly-primary/12 px-3.5 py-2 text-[0.9rem] font-extrabold text-[#029d47]">
-                {kicker}
-              </span>
-              <h1
-                style={{ fontWeight: 700 }}
-                className="max-w-[680px] mt-4 mb-2 text-[3.4rem] leading-none legacy-max-800:text-[2rem]"
-              >
+              {kicker && (
+                <p className="mb-3 inline-flex items-center gap-2 text-xs font-semibold tracking-[0.08em] text-workly-primary-ink uppercase dark:text-workly-dark-accent">
+                  {kicker}
+                </p>
+              )}
+              <h1 className="mb-2 max-w-[680px] font-workly-display text-[clamp(1.875rem,3.4vw,2.625rem)] leading-[1.04] font-semibold tracking-[-0.025em] text-balance [font-variation-settings:'opsz'_96]">
                 {title}
               </h1>
-              <p className="max-w-[680px] leading-[1.7] text-[#64748b] dark:text-[#aebbd0]">
+              <p className="max-w-[680px] leading-[1.7] text-workly-muted-warm dark:text-[#9aa59f]">
                 {description}
               </p>
             </div>
@@ -71,10 +69,12 @@ export function ModulePage({
 export function ModuleEmpty({ title, message, icon = 'fa-briefcase', error = false, children }) {
   const Component = error ? ErrorState : EmptyState;
   return (
-    <div className="rounded-[24px] border border-dashed border-[#cbd5e1] bg-white/90 p-[42px] text-center text-[#64748b] dark:border-[#94a3b8]/20 dark:bg-[#0f172a]/92 dark:text-[#aebbd0]">
-      <i aria-hidden="true" className={`fas ${icon} mb-3 text-[2.3rem] text-workly-primary`} />
+    <div className="grid justify-items-center gap-3 rounded-lg border border-dashed border-workly-rule bg-workly-card/60 px-6 py-12 text-center text-workly-muted-warm dark:border-white/15 dark:bg-workly-night-raised dark:text-[#9aa59f]">
+      <span aria-hidden="true" className="grid h-12 w-12 place-items-center rounded-full bg-workly-primary-tint text-lg text-workly-forest dark:bg-workly-dark-accent/10 dark:text-workly-dark-accent">
+        <i className={`fas ${icon}`} />
+      </span>
       <Component>
-        <h3 className="font-bold">{title}</h3>
+        <h3 className="text-lg font-semibold text-workly-ink-warm dark:text-[#ecebe5]">{title}</h3>
         <p>{message}</p>
       </Component>
       {children}
@@ -98,7 +98,7 @@ export function ModuleToast({ message }) {
   return message ? (
     <div
       role="status"
-      className="fixed right-6 bottom-6 z-[99999] max-w-[calc(100vw-48px)] rounded-2xl bg-[#101827] px-[18px] py-3.5 text-white shadow-[0_14px_30px_rgba(0,0,0,0.25)]"
+      className="fixed right-6 bottom-6 z-[99999] max-w-[calc(100vw-48px)] rounded-lg bg-[#16211b] px-[18px] py-3.5 text-white shadow-[0_1px_2px_rgba(22,33,27,0.05)]"
     >
       {message}
     </div>

@@ -1,21 +1,31 @@
 import { Link } from 'react-router';
-import { categories } from '../../services/catalogService';
+import { offices } from '../home/offices';
 
-export default function CategoryNavigation({ active }) {
+// The home's category strip, shared by every page: a photo thumbnail per craft,
+// scrollable on small screens, with the current category marked.
+export default function CategoryNavigation({ active, bordered = true }) {
   return (
-    <div className="w-full overflow-hidden border-b border-[rgba(15,23,42,0.08)] bg-[rgba(248,251,255,0.96)] shadow-[0_10px_24px_rgba(15,23,42,0.03)] dark:border-[rgba(94,130,172,0.16)] dark:bg-[rgba(10,18,34,0.98)]">
-      <div className="mx-auto flex min-h-[72px] w-full max-w-[1520px] items-center justify-between gap-4 px-8 legacy-max-1100:justify-start legacy-max-1100:overflow-x-auto legacy-max-1100:[scrollbar-width:none] legacy-max-720:min-h-[58px] legacy-max-720:gap-2.5 legacy-max-720:px-4">
-        {categories.map((category) => (
-          <Link
-            key={category.id}
-            to={`/categorias?id=${category.id}`}
-            className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-[9px] rounded-full border px-4 text-[0.94rem] font-extrabold whitespace-nowrap hover:-translate-y-px hover:border-workly-primary-glow/[0.22] hover:bg-workly-primary-glow/10 hover:text-[#0f9f54] legacy-max-720:min-h-[38px] legacy-max-720:px-[13px] legacy-max-720:text-[0.84rem] dark:hover:border-workly-dark-accent/25 dark:hover:bg-workly-dark-accent/[0.13] dark:hover:text-workly-dark-accent ${active === category.id ? 'border-workly-primary-glow/[0.22] bg-workly-primary-glow/10 text-[#0f9f54] dark:border-workly-dark-accent/25 dark:bg-workly-dark-accent/[0.13] dark:text-workly-dark-accent' : 'border-transparent text-[#0f172a] dark:text-[#eef5ff]'}`}
-          >
-            <i aria-hidden="true" className={`fas ${category.icon} text-[0.98rem]`} />
-            <span>{category.navName || category.name}</span>
-          </Link>
-        ))}
-      </div>
-    </div>
+    <nav
+      aria-label="Categorias"
+      className={`w-full bg-workly-paper ${bordered ? 'border-b border-workly-rule' : ''}`}
+    >
+      <ul className="mx-auto flex max-w-[1280px] snap-x gap-1 overflow-x-auto px-10 py-2.5 [scrollbar-width:none] legacy-max-720:px-6 xl:justify-between">
+        {offices.map((office) => {
+          const current = active === office.id;
+          return (
+            <li key={office.id} className="shrink-0 snap-start">
+              <Link
+                to={`/categorias?id=${office.id}`}
+                aria-current={current ? 'page' : undefined}
+                className={`flex min-h-11 items-center gap-2.5 rounded-md py-1.5 pr-3 pl-1.5 text-[0.92rem] font-medium transition-colors ${current ? 'bg-workly-card text-workly-ink-warm shadow-[inset_0_-2px_0_var(--color-workly-forest)] dark:shadow-[inset_0_-2px_0_var(--color-workly-dark-accent)]' : 'text-workly-ink-warm/85 hover:bg-workly-card hover:text-workly-ink-warm'}`}
+              >
+                <img src={office.photo} alt="" loading="lazy" className="h-8 w-8 rounded object-cover" />
+                {office.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }

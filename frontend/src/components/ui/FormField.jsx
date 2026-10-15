@@ -31,7 +31,7 @@ export default function FormField({
         id={controlId}
         aria-invalid={error ? true : props['aria-invalid']}
         aria-describedby={description}
-        className={`${appearance === 'custom' ? '' : 'w-full min-w-0 rounded-md border border-[#dbdbdb] bg-[#f8f9fa] px-[15px] py-3 text-sm outline-none transition-[border-color,box-shadow] focus:border-workly-primary focus:shadow-[0_0_0_3px_#8fd9af] dark:border-[rgba(94,130,172,0.22)] dark:bg-[rgba(10,18,34,0.92)] dark:text-workly-dark-text dark:focus:border-[rgba(74,222,128,0.55)] dark:focus:shadow-[0_0_0_4px_rgba(74,222,128,0.12),0_10px_28px_rgba(74,222,128,0.07)]'} ${className}`}
+        className={`${appearance === 'custom' ? '' : 'w-full min-w-0 rounded-md border border-workly-rule bg-workly-card px-[15px] py-3 text-[0.95rem] text-workly-ink-warm outline-none transition-[border-color,box-shadow] placeholder:text-workly-muted-warm focus:border-workly-forest focus:shadow-[0_0_0_3px_rgba(14,59,44,0.14)] aria-[invalid=true]:border-[#be123c] dark:border-white/15 dark:bg-workly-night dark:text-[#ecebe5] dark:focus:border-workly-dark-accent'} ${className}`}
       >
         {content}
       </Control>

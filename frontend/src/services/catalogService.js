@@ -6,18 +6,21 @@ export const categories = [
   {
     id: '1',
     name: 'Design',
+    label: 'Design',
     icon: 'fa-paint-brush',
     description: 'Serviços criativos para identidade visual, interfaces e mais.'
   },
   {
     id: '2',
     name: 'Programação',
+    label: 'Programação',
     icon: 'fa-code',
     description: 'Desenvolvimento web, mobile, automações e sistemas.'
   },
   {
     id: '3',
     name: 'Video/Edição',
+    label: 'Vídeo e edição',
     navName: 'Vídeo/Edição',
     icon: 'fa-film',
     description: 'Edição de vídeos, motion e conteúdo audiovisual.'
@@ -25,29 +28,49 @@ export const categories = [
   {
     id: '4',
     name: 'Inteligência Artificial',
+    label: 'Inteligência artificial',
     icon: 'fa-wifi',
     description: 'Soluções com IA, automação e modelos inteligentes.'
   },
   {
     id: '5',
     name: 'Tradução/Escritor',
+    label: 'Tradução e escrita',
+    aliases: ['Escrita/Tradução'],
     icon: 'fa-book',
     description: 'Textos, revisão, copy e tradução profissional.'
   },
   {
     id: '6',
     name: 'Fotografia',
+    label: 'Fotografia',
     icon: 'fa-camera',
     description: 'Ensaios, tratamento de imagem e cobertura visual.'
   },
   {
     id: '7',
     name: 'Áudio/Música',
+    label: 'Áudio e música',
     icon: 'fa-headphones',
     description: 'Produção sonora, mixagem, locução e trilhas.'
   }
 ];
 
+// Display names only; `name` stays the identifier the API stores and filters on.
+const plainName = (text) =>
+  String(text || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim();
+export function categoryLabel(name) {
+  const key = plainName(name);
+  const found = categories.find(
+    (item) =>
+      [item.name, item.navName, item.label, ...(item.aliases || [])].some((n) => plainName(n) === key)
+  );
+  return found ? found.label : name;
+}
 export function normalizeService(service) {
   if (!service) return null;
   return {

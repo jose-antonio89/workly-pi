@@ -68,11 +68,7 @@ function getContractValue(item = {}) {
 }
 
 function contractHasConfirmedValue(item = {}) {
-  const status = String(item.status || 'pendente');
-  const tipo = String(item.tipoContratacao || item.tipo_contratacao || 'fixo');
-  if (status === 'cancelado') return false;
-  if (tipo === 'fixo') return true;
-  return ['proposta_aceita', 'em_andamento', 'concluido', 'encerrado'].includes(status);
+  return ['concluido', 'encerrado'].includes(String(item.status));
 }
 
 function dashboardHasUsefulData(dashboard = {}) {
@@ -101,7 +97,9 @@ function buildDashboardFallback(services = [], reviews = [], leads = [], usuario
     const date = lead.updatedAt || lead.createdAt || lead.created_at;
     const index = monthIndex.get(getMonthKey(date));
     const value = getContractValue(lead);
-    const confirmedValue = contractHasConfirmedValue(lead);
+    const seller = lead.freelancer?._id || lead.freelancer?.idUsuario || lead.freelancer;
+    const userId = usuario.idUsuario || usuario._id;
+    const confirmedValue = contractHasConfirmedValue(lead) && Boolean(seller && userId && String(seller) === String(userId));
     if (index !== undefined) {
       if (confirmedValue) primaryData[index] += value;
       secondaryData[index] += 1;
@@ -182,7 +180,7 @@ function buildDashboardFallback(services = [], reviews = [], leads = [], usuario
     },
     monthlyPerformance: {
       labels: months.map((month) => month.label),
-      primaryLabel: 'Receita/Gasto confirmado (R$)',
+      primaryLabel: 'Receita de serviços concluídos (R$)',
       primaryData: primaryData.map((value) => Number(value.toFixed(2))),
       secondaryLabel: 'Atividades',
       secondaryData
@@ -194,7 +192,7 @@ function buildDashboardFallback(services = [], reviews = [], leads = [], usuario
         : ['Sem movimentação ainda'],
       data: distributionEntries.length
         ? distributionEntries.map(([, value]) => Number(value.toFixed(2)))
-        : [1],
+        : [0],
       empty: distributionEntries.length === 0
     },
     weeklyActivity: { labels: weeklyLabels, data: weeklyData },

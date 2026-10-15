@@ -2,42 +2,54 @@ import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
 export const submitStyles =
-  'w-full cursor-pointer rounded-md border-0 bg-workly-primary dark:bg-transparent p-3 text-base leading-[normal] font-semibold text-white transition-colors hover:bg-[#038a3d] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-workly-primary dark:bg-[linear-gradient(135deg,#0fce6a,#0aa85a)] dark:shadow-[0_14px_32px_rgba(15,206,106,0.28),0_0_0_1px_rgba(15,206,106,0.12)]';
+  'w-full cursor-pointer rounded-md border-0 bg-workly-forest px-4 py-3 text-base leading-[normal] font-semibold text-workly-on-forest transition-[background-color,transform] duration-150 ease-workly-out hover:bg-workly-forest-raised motion-safe:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-workly-dark-accent dark:text-workly-night dark:hover:bg-[#6ee7a0]';
 export const registrationSubmitStyles =
-  'mt-2.5 w-full cursor-pointer rounded border-0 bg-[#4caf50] dark:bg-transparent p-3 text-[13.3333px] leading-[normal] font-bold text-white hover:bg-[#45a049] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-workly-primary legacy-max-576:p-2.5 dark:bg-[linear-gradient(135deg,#0fce6a,#0aa85a)] dark:shadow-[0_14px_32px_rgba(15,206,106,0.28),0_0_0_1px_rgba(15,206,106,0.12)]';
+  'mt-2.5 w-full cursor-pointer rounded-md border-0 bg-workly-forest px-4 py-3 text-base leading-[normal] font-semibold text-workly-on-forest transition-[background-color,transform] duration-150 ease-workly-out hover:bg-workly-forest-raised motion-safe:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-workly-dark-accent dark:text-workly-night dark:hover:bg-[#6ee7a0]';
 export const linkStyles =
-  'text-workly-primary hover:text-[#038a3d] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-workly-primary dark:text-workly-dark-text';
-export const glow =
-  '[filter:drop-shadow(0_0_3px_rgba(0,255,123,0.95))_drop-shadow(0_0_8px_rgba(0,255,123,0.72))_drop-shadow(0_0_16px_rgba(0,255,123,0.48))_drop-shadow(0_0_28px_rgba(0,255,123,0.28))] hover:[filter:drop-shadow(0_0_4px_rgba(0,255,123,1))_drop-shadow(0_0_11px_rgba(0,255,123,0.82))_drop-shadow(0_0_22px_rgba(0,255,123,0.55))_drop-shadow(0_0_36px_rgba(0,255,123,0.32))]';
+  'font-medium text-workly-primary-ink underline-offset-4 hover:underline dark:text-workly-dark-accent';
+// Dark grounds: invert the black wordmark and rotate hues back so the brand dots keep their colour.
+export const glow = '[filter:invert(1)_hue-rotate(180deg)]';
 
-export function showAuthAlert({ icon, title, text, confirmText = 'OK', cancelText }) {
+// Each tone keeps its own symbol and tint so success, info, warning and error stay distinct.
+// Colours are literal because Swal mounts outside the themed root.
+const alertTones = {
+  success: { symbol: 'fa-check', light: 'bg-[#e7f6ee]! text-[#037a3a]!', dark: 'bg-[#5fd394]/12! text-[#5fd394]!' },
+  info: { symbol: 'fa-info', light: 'bg-[#e8eef5]! text-[#2f5d8a]!', dark: 'bg-[#93c5fd]/12! text-[#93c5fd]!' },
+  warning: { symbol: 'fa-exclamation', light: 'bg-[#fdf3e2]! text-[#8a5000]!', dark: 'bg-[#f2c14e]/14! text-[#f2c14e]!' },
+  error: { symbol: 'fa-xmark', light: 'bg-[#fde8e8]! text-[#9b1c1c]!', dark: 'bg-[#fda4af]/14! text-[#fda4af]!' }
+};
+
+// danger: irreversible confirmations get a red action and start focused on Cancel.
+export function showAuthAlert({ icon = 'info', symbol, title, text, confirmText = 'OK', cancelText, danger = false }) {
   const dark = localStorage.getItem('darkMode') === 'enabled';
   const opener = document.activeElement;
+  const tone = alertTones[icon] || alertTones.info;
   return Swal.fire({
     icon,
+    iconHtml: `<i aria-hidden="true" class="fas ${symbol || tone.symbol}"></i>`,
     title,
     text,
     confirmButtonText: confirmText,
     showCancelButton: Boolean(cancelText),
     cancelButtonText: cancelText,
+    reverseButtons: true,
+    focusCancel: Boolean(cancelText) && (danger || icon === 'warning'),
     allowOutsideClick: true,
     heightAuto: false,
     buttonsStyling: false,
     returnFocus: false,
-    backdrop: 'rgba(4,10,20,0.46)',
-    showClass: { popup: 'animate-workly-modal-in' },
-    hideClass: { popup: 'animate-workly-modal-out' },
+    backdrop: 'rgba(12,20,17,0.5)',
+    showClass: { popup: 'animate-workly-modal-in', icon: '' },
+    hideClass: { popup: 'animate-workly-modal-out', icon: '' },
     customClass: {
-      container: 'z-[25000]! p-[18px]! backdrop-blur-[8px]',
-      popup: `w-[min(440px,calc(100vw-34px))]! rounded-[24px]! border! border-[rgba(148,163,184,0.18)]! px-7! pt-[30px]! pb-[26px]! font-workly! leading-[normal]! tracking-[0]! bg-transparent! overflow-hidden! ${dark ? 'bg-[radial-gradient(circle_at_50%_-20%,rgba(74,222,128,0.12),transparent_38%),linear-gradient(160deg,rgba(11,20,36,0.99),rgba(9,15,29,0.99))]! text-workly-dark-text! shadow-[0_36px_100px_rgba(0,4,18,0.64)]!' : 'bg-[radial-gradient(circle_at_50%_-20%,rgba(4,191,85,0.10),transparent_38%),linear-gradient(180deg,#ffffff,#f8fbff)]! text-workly-text! shadow-[0_30px_90px_rgba(15,23,42,0.28)]!'}`,
-      title: `mt-1! mb-2.5! p-0! font-workly! text-[1.8rem]! legacy-max-580:text-[1.45rem]! leading-[1.12]! font-black! ${dark ? 'text-[#f2f7ff]!' : 'text-[#0f172a]!'}`,
-      htmlContainer: `mx-auto! mt-0! mb-[22px]! max-w-[340px]! font-workly! text-[0.98rem]! leading-[1.55]! font-medium! ${dark ? 'text-[#a9b9cf]!' : 'text-[#64748b]!'}`,
-      icon: `h-[78px]! w-[78px]! mt-1! mx-auto! mb-[18px]! border-[3px]! ${icon === 'success' ? 'border-[rgba(34,197,94,0.34)]! text-[#16a34a]! bg-[rgba(34,197,94,0.07)]! [&_[class^=swal2-success-line]]:bg-[#22c55e]!' : icon === 'error' ? 'border-[rgba(239,68,68,0.28)]! text-[#ef4444]! bg-[rgba(239,68,68,0.06)]!' : 'border-[rgba(245,158,11,0.30)]! text-[#f59e0b]! bg-[rgba(245,158,11,0.08)]!'}`,
-      actions: 'mt-1! gap-2.5!',
-      cancelButton:
-        'min-h-12 rounded-[14px] border-0 bg-[#e2e8f0] px-[22px] font-workly font-bold text-[#334155] focus-visible:outline-2 focus-visible:outline-workly-primary',
-      confirmButton:
-        'min-w-[124px] min-h-12 rounded-[14px] border-0 bg-[linear-gradient(135deg,#13ce66,#04bf55)] px-[22px] font-workly text-[0.94rem] leading-[normal] font-black text-white shadow-[0_14px_30px_rgba(4,191,85,0.24)] hover:-translate-y-px hover:brightness-[1.03] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-workly-primary'
+      container: 'z-[25000]! p-[18px]!',
+      popup: `w-[min(420px,calc(100vw-32px))]! rounded-xl! border! px-8! pt-8! pb-7! font-workly! leading-[normal]! tracking-[0]! overflow-hidden! shadow-[0_24px_48px_-24px_rgba(12,20,17,0.35)]! legacy-max-480:px-6! ${dark ? 'border-white/10! bg-[#131d19]! text-[#ecebe5]!' : 'border-[#ddd8cc]! bg-[#ffffff]! text-[#16211b]!'}`,
+      icon: `m-0! mx-auto! mb-5! flex! h-12! w-12! items-center! justify-center! rounded-full! border-0! text-base! leading-none! [&_.swal2-icon-content]:text-base! [&_.swal2-icon-content]:leading-none! ${dark ? tone.dark : tone.light}`,
+      title: `m-0! mb-2! p-0! font-workly-display! text-[1.5rem]! leading-[1.15]! font-semibold! tracking-[-0.02em]! [font-variation-settings:'opsz'_48]! ${dark ? 'text-[#ecebe5]!' : 'text-[#16211b]!'}`,
+      htmlContainer: `m-0! mx-auto! mb-7! max-w-[320px]! p-0! font-workly! text-[0.95rem]! leading-[1.55]! font-normal! ${dark ? 'text-[#a3ada7]!' : 'text-[#5e6862]!'}`,
+      actions: 'm-0! w-full! flex-nowrap! gap-2.5! legacy-max-480:flex-col-reverse!',
+      cancelButton: `m-0! min-h-11 flex-1 rounded-md border px-5 font-workly text-[0.95rem] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#037a3a] legacy-max-480:w-full ${dark ? 'border-white/15 bg-transparent text-[#ecebe5] hover:bg-white/5' : 'border-[#ddd8cc] bg-[#ffffff] text-[#16211b] hover:bg-[#f5f3ee]'}`,
+      confirmButton: `m-0! min-h-11 flex-1 rounded-md border-0 px-5 font-workly text-[0.95rem] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#037a3a] legacy-max-480:w-full ${danger ? (dark ? 'bg-[#fda4af] text-[#0c1411] hover:bg-[#fecdd3]' : 'bg-[#b42318] text-[#ffffff] hover:bg-[#912018]') : dark ? 'bg-[#4ade80] text-[#0c1411] hover:bg-[#6ee7a0]' : 'bg-[#0e3b2c] text-[#f3f1ea] hover:bg-[#1d5a43]'}`
     }
   }).then((result) => {
     if (opener?.isConnected) opener.focus();

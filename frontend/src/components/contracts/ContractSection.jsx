@@ -2,57 +2,56 @@ import { useState } from 'react';
 import { ModuleButton } from '../ui/ModuleUI';
 import ContractCard from './ContractCard';
 
+// A section is a heading plus one list surface; rows divide by rules instead of nesting cards.
 export default function ContractSection({ items, received, ...props }) {
   const [open, setOpen] = useState(true),
-    title = received ? 'Me contrataram' : 'Contratei';
+    title = received ? 'Me contrataram' : 'Contratei',
+    panelId = received ? 'contratos-recebidos' : 'contratos-contratados';
   return (
-    <section className="grid gap-3.5">
-      <button
-        type="button"
-        data-contract-toggle={received ? 'recebidos' : 'contratados'}
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-        className="flex text-[13.3333px] min-h-[84px] items-center gap-3.5 rounded-[24px] border border-[#e2e8f0]/90 bg-white/88 px-5 py-[18px] text-left shadow-[0_18px_46px_rgba(15,23,42,0.06)] hover:-translate-y-px hover:border-workly-primary/25 focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-workly-primary/22 legacy-max-760:items-start legacy-max-760:gap-2.5 legacy-max-760:p-4 dark:border-[#94a3b8]/16 dark:bg-[#0f172a]/92"
-      >
-        <span className="grid h-[46px] w-[46px] shrink-0 place-items-center rounded-2xl bg-workly-primary/12 text-workly-primary">
-          <i
-            aria-hidden="true"
-            className={`fas ${received ? 'fa-handshake' : 'fa-cart-shopping'}`}
-          />
-        </span>
-        <span className="grid min-w-0 flex-1 gap-1">
-          <strong className="text-[1.35rem] leading-[1.1] legacy-max-760:text-[1.1rem]">
+    <section className="grid gap-4">
+      <div className="flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-3 font-workly-display text-[1.5rem] leading-tight font-semibold tracking-[-0.015em] text-workly-ink-warm [font-variation-settings:'opsz'_48]">
             {title}
-          </strong>
-          <small className="text-[0.94rem] leading-[1.45] text-[#64748b] legacy-max-760:text-[0.86rem] dark:text-[#aebbd0]">
+            <span className="inline-grid h-7 min-w-7 place-items-center rounded-full bg-workly-sunken px-2 font-workly text-sm font-semibold text-workly-ink-warm tabular-nums">
+              {items.length}
+            </span>
+          </h2>
+          <p className="mt-1 text-[0.95rem] text-workly-muted-warm">
             {received
               ? 'Propostas e trabalhos recebidos dos seus clientes.'
               : 'Serviços comprados por você. Acompanhe propostas, entregas e avaliações.'}
-          </small>
-        </span>
-        <span className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-workly-primary/12 font-extrabold text-workly-primary legacy-max-760:h-[34px] legacy-max-760:w-[34px]">
-          {items.length}
-        </span>
-        <span
-          aria-hidden="true"
-          className={`grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full bg-[#f1f5f9] text-[#64748b] transition-transform legacy-max-760:h-[34px] legacy-max-760:w-[34px] dark:bg-[#17233a] dark:text-[#d7e2f2] ${open ? '' : '-rotate-90'}`}
+          </p>
+        </div>
+        <button
+          type="button"
+          data-contract-toggle={received ? 'recebidos' : 'contratados'}
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => setOpen(!open)}
+          className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-medium text-workly-muted-warm transition-colors hover:bg-workly-sunken hover:text-workly-ink-warm"
         >
-          <i className="fas fa-chevron-down" />
-        </span>
-      </button>
+          {open ? 'Recolher' : 'Mostrar'}
+          <i
+            aria-hidden="true"
+            className={`fas fa-chevron-down text-xs transition-transform duration-200 ${open ? '' : '-rotate-90'}`}
+          />
+        </button>
+      </div>
       <div
-        className={`grid transition-[grid-template-rows,opacity] duration-[380ms] motion-reduce:transition-none ${open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+        id={panelId}
+        className={`grid transition-[grid-template-rows,opacity] duration-300 motion-reduce:transition-none ${open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
         inert={!open ? true : undefined}
       >
         <div className="min-h-0 overflow-hidden">
           {items.length ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(290px,1fr))] items-start gap-[22px] legacy-max-760:grid-cols-1">
+            <div className="divide-y divide-workly-rule rounded-xl border border-workly-rule bg-workly-card dark:divide-white/10 dark:border-white/10">
               {items.map((c) => (
                 <ContractCard key={c.idContrato} contract={c} {...props} />
               ))}
             </div>
           ) : (
-            <div className="rounded-[24px] border border-dashed border-[#cbd5e1] bg-white/90 p-[26px] text-[#64748b] dark:bg-[#0f172a]/92 dark:text-[#aebbd0]">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-dashed border-workly-rule px-6 py-5 text-workly-muted-warm dark:border-white/15">
               <p>
                 {received
                   ? 'Você ainda não recebeu propostas ou contratações.'

@@ -7,7 +7,7 @@ export const salesConfig = () => ({
   options: {
     responsive: true,
     maintainAspectRatio: false,
-    legend: { display: true, position: 'bottom', labels: { fontColor: '#cbd5e1' } },
+    legend: { display: true, position: 'bottom', labels: { fontColor: '#d6d1c4' } },
     tooltips: { mode: 'index', intersect: false },
     // ajuste visual do gráfico no dark mode: grid mais suave e textos claros, senão fica bem apagado.
     scales: {
@@ -16,15 +16,15 @@ export const salesConfig = () => ({
           id: 'y-axis-money',
           type: 'linear',
           position: 'left',
-          ticks: { beginAtZero: true, fontColor: '#94a3b8' },
-          gridLines: { color: 'rgba(148, 163, 184, 0.10)' }
+          ticks: { beginAtZero: true, fontColor: '#8a938d' },
+          gridLines: { color: 'rgba(120,112,96, 0.10)' }
         },
         {
           id: 'y-axis-count',
           type: 'linear',
           position: 'right',
-          ticks: { beginAtZero: true, precision: 0, fontColor: '#94a3b8' },
-          gridLines: { drawOnChartArea: false, color: 'rgba(148, 163, 184, 0.10)' }
+          ticks: { beginAtZero: true, precision: 0, fontColor: '#8a938d' },
+          gridLines: { drawOnChartArea: false, color: 'rgba(120,112,96, 0.10)' }
         }
       ]
     }
@@ -38,7 +38,7 @@ export const revenueConfig = () => ({
     datasets: [
       {
         data: [1],
-        backgroundColor: ['rgba(148, 163, 184, 0.35)'],
+        backgroundColor: ['rgba(120,112,96, 0.35)'],
         borderColor: '#ffffff',
         borderWidth: 2
       }
@@ -48,7 +48,7 @@ export const revenueConfig = () => ({
     responsive: true,
     maintainAspectRatio: false,
     cutoutPercentage: 70,
-    legend: { position: 'bottom', labels: { fontColor: '#cbd5e1' } }
+    legend: { position: 'bottom', labels: { fontColor: '#d6d1c4' } }
   }
 });
 
@@ -71,12 +71,12 @@ export const viewsConfig = () => ({
     scales: {
       yAxes: [
         {
-          ticks: { beginAtZero: true, precision: 0, fontColor: '#94a3b8' },
-          gridLines: { color: 'rgba(148, 163, 184, 0.10)' }
+          ticks: { beginAtZero: true, precision: 0, fontColor: '#8a938d' },
+          gridLines: { color: 'rgba(120,112,96, 0.10)' }
         }
       ],
       xAxes: [
-        { ticks: { fontColor: '#94a3b8' }, gridLines: { color: 'rgba(148, 163, 184, 0.08)' } }
+        { ticks: { fontColor: '#8a938d' }, gridLines: { color: 'rgba(120,112,96, 0.08)' } }
       ]
     }
   }

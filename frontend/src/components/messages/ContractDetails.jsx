@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { serviceImage } from '../home/offices';
 import { Link } from 'react-router';
 import Button from '../ui/Button';
 import { ModuleButton } from '../ui/ModuleUI';
@@ -26,7 +27,7 @@ export default function ContractDetails({ contract: c, onClose }) {
         'Conversa com',
         <Link
           to={publicProfileUrl(other)}
-          className="font-black text-workly-primary hover:underline"
+          className="font-bold text-workly-primary-ink hover:underline"
         >
           {other.nome || 'Usuário'}
         </Link>
@@ -49,7 +50,7 @@ export default function ContractDetails({ contract: c, onClose }) {
             href={c.referencias}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-workly-primary"
+            className="text-workly-primary-ink"
           >
             {c.referencias}
           </a>
@@ -68,17 +69,17 @@ export default function ContractDetails({ contract: c, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="contractDetailTitle"
-        className="relative max-h-[calc(100vh-44px)] w-full max-w-[760px] overflow-auto rounded-[26px] border border-[#94a3b8]/18 bg-white shadow-[0_34px_100px_rgba(15,23,42,0.34)] dark:border-[#5e82ac]/20 dark:bg-[#0f172a]/88"
+        className="relative max-h-[calc(100vh-44px)] w-full max-w-[760px] overflow-auto rounded-lg border border-[#8a938d]/18 bg-workly-card shadow-[0_1px_2px_rgba(22,33,27,0.05)] dark:border-[#3a4741]/20 dark:bg-[#16211b]/88"
       >
-        <header className="flex justify-between gap-3.5 border-b border-[#94a3b8]/16 px-6 py-[22px]">
+        <header className="flex justify-between gap-3.5 border-b border-[#8a938d]/16 px-6 py-[22px]">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-workly-primary/12 px-3.5 py-2 text-[0.9rem] font-extrabold text-[#029d47]">
+            <span className="sr-only">
               <i aria-hidden="true" className="fas fa-file-contract" />
               Detalhes
             </span>
             <h2
               id="contractDetailTitle"
-              className="mt-2 text-[1.65rem] font-bold text-[#0f172a] dark:text-[#eef4ff]"
+              className="mt-2 text-[1.65rem] font-bold text-workly-ink-warm dark:text-[#ecebe5]"
             >
               {c.nomeServico || 'Contrato'}
             </h2>
@@ -89,7 +90,7 @@ export default function ContractDetails({ contract: c, onClose }) {
             onClick={onClose}
             title="Fechar detalhes"
             aria-label="Fechar detalhes"
-            className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-[#eef3f8] text-[#526174] focus-visible:outline-2 focus-visible:outline-workly-primary"
+            className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-workly-sunken text-workly-ink-warm/80 focus-visible:outline-2 focus-visible:outline-workly-primary"
           >
             <i aria-hidden="true" className="fas fa-xmark" />
           </Button>
@@ -97,22 +98,22 @@ export default function ContractDetails({ contract: c, onClose }) {
         <div id="contractDetailContent" className="px-6 pt-[22px] pb-6">
           <div className="mb-[18px] grid grid-cols-[180px_minmax(0,1fr)] items-center gap-[18px] legacy-max-640:grid-cols-1">
             <img
-              src={c.imagemServico || defaultServiceImage}
+              src={serviceImage(c, defaultServiceImage)}
               alt=""
               onError={(event) => {
                 event.currentTarget.onerror = null;
                 event.currentTarget.src = defaultServiceImage;
               }}
-              className="h-[124px] w-full rounded-[18px] object-cover"
+              className="h-[124px] w-full rounded-lg object-cover"
             />
             <div>
-              <span className="rounded-full bg-[#f1f5f9] px-2.5 py-[7px] text-[0.82rem] font-extrabold dark:bg-[#17233a]">
+              <span className="rounded-full bg-workly-sunken px-2.5 py-[7px] text-[0.82rem] font-semibold dark:bg-[#1a2621]">
                 {contractStatus(c.status)}
               </span>
-              <h3 className="mt-3 mb-2 text-[1.35rem] leading-[1.2] font-bold text-[#0f172a] dark:text-[#eef4ff]">
+              <h3 className="mt-3 mb-2 text-[1.35rem] leading-[1.2] font-bold text-workly-ink-warm dark:text-[#ecebe5]">
                 {c.nomeServico || 'Serviço'}
               </h3>
-              <p className="leading-[1.55] font-semibold text-[#64748b] dark:text-[#a9b9cf]">
+              <p className="leading-[1.55] font-semibold text-workly-muted-warm dark:text-[#9aa59f]">
                 {c.descricaoServico || 'Contrato criado pela plataforma Workly.'}
               </p>
             </div>
@@ -121,12 +122,12 @@ export default function ContractDetails({ contract: c, onClose }) {
             {rows.map(([label, value]) => (
               <div
                 key={label}
-                className="min-w-0 rounded-2xl border border-[#94a3b8]/14 bg-[#f8fbff] px-3.5 py-[13px] dark:border-[#5e82ac]/20 dark:bg-[#0f172a]/88"
+                className="min-w-0 rounded-lg border border-[#8a938d]/14 bg-workly-paper px-3.5 py-[13px] dark:border-[#3a4741]/20 dark:bg-[#16211b]/88"
               >
-                <dt className="mb-[5px] text-[0.74rem] font-black text-[#7b8aa0] uppercase">
+                <dt className="mb-[5px] text-[0.74rem] font-bold text-workly-muted-warm uppercase">
                   {label}
                 </dt>
-                <dd className="font-extrabold text-[#0f172a] [overflow-wrap:anywhere] dark:text-[#eef4ff]">
+                <dd className="font-semibold text-workly-ink-warm [overflow-wrap:anywhere] dark:text-[#ecebe5]">
                   {value}
                 </dd>
               </div>

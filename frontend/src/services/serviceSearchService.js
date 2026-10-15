@@ -43,12 +43,12 @@ export function serviceSearchTitle(filters, originalParams) {
   const category = categories.find((item) => item.id === id);
   if (term)
     return {
-      heading: `Resultados para "${term}"${id ? ` em ${category?.name || 'categoria'}` : ''}`,
+      heading: `Resultados para "${term}"${id ? ` em ${category?.label || 'categoria'}` : ''}`,
       title: 'Workly - Busca'
     };
   if (id)
     return {
-      heading: category ? `Serviços de ${category.name}` : '',
+      heading: category ? `Serviços de ${category.label}` : '',
       title: category ? `Workly - ${category.name}` : 'Workly - Categoria'
     };
   return { heading: 'Todos os Serviços', title: 'Workly - Todos os Serviços' };
