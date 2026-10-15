@@ -1,4 +1,3 @@
-
 function montarUrlImagem(req, caminho) {
   if (!caminho) return '';
   if (caminho.startsWith('http')) return caminho;
@@ -33,7 +32,6 @@ function montarBaseUsuario(req, usuario) {
     notificacoesEmail: usuario.notificacoesEmail !== false,
     notificacoesPropostas: usuario.notificacoesPropostas !== false,
     notificacoesMarketing: Boolean(usuario.notificacoesMarketing),
-    doisFatores: Boolean(usuario.doisFatores),
     avaliacaoMedia: Number(usuario.avaliacaoMedia || 0),
     totalAvaliacoes: Number(usuario.totalAvaliacoes || 0),
     createdAt: usuario.createdAt,
@@ -58,7 +56,6 @@ function montarBaseUsuario(req, usuario) {
     notificacoes_email: base.notificacoesEmail,
     notificacoes_propostas: base.notificacoesPropostas,
     notificacoes_marketing: base.notificacoesMarketing,
-    dois_fatores: base.doisFatores,
     avaliacao_media: base.avaliacaoMedia,
     total_avaliacoes: base.totalAvaliacoes,
     created_at: base.createdAt,
@@ -73,14 +70,21 @@ function removerDadosSensiveis(usuarioMapeado) {
   // dados que só devem aparecer no perfil do próprio usuário logado.
   // em cards, avaliações, contratos e serviços, mandamos só o necessário pra tela.
   [
-    'email', 'cpf', 'telefone',
-    'metodoPagamento', 'metodo_pagamento',
-    'chavePix', 'chave_pix', 'banco',
-    'notificacoesEmail', 'notificacoes_email',
-    'notificacoesPropostas', 'notificacoes_propostas',
-    'notificacoesMarketing', 'notificacoes_marketing',
-    'doisFatores', 'dois_fatores'
-  ].forEach(campo => delete publico[campo]);
+    'email',
+    'cpf',
+    'telefone',
+    'metodoPagamento',
+    'metodo_pagamento',
+    'chavePix',
+    'chave_pix',
+    'banco',
+    'notificacoesEmail',
+    'notificacoes_email',
+    'notificacoesPropostas',
+    'notificacoes_propostas',
+    'notificacoesMarketing',
+    'notificacoes_marketing'
+  ].forEach((campo) => delete publico[campo]);
 
   return publico;
 }
@@ -109,7 +113,10 @@ function mapServico(req, servico) {
     precoNegociavel: false,
     valorCombinar: Boolean(servico.valorCombinar),
     extra: servico.extra || '',
-    imagemServico: montarUrlImagem(req, servico.imagemServico || '/uploads/servicos/servico_padrao.svg'),
+    imagemServico: montarUrlImagem(
+      req,
+      servico.imagemServico || '/uploads/servicos/servico_padrao.svg'
+    ),
     categoriaId: categoria.legacyId || null,
     nomeCategoria: categoria.nome || '',
     slugCategoria: categoria.slug || '',
@@ -149,6 +156,7 @@ function mapServico(req, servico) {
 
 function mapContrato(req, contrato, usuarioAtualId = null) {
   const servico = contrato.servico || {};
+  const statusNormalizado = contrato.status === 'encerrado' ? 'concluido' : contrato.status;
   const cliente = contrato.cliente || {};
   const freelancer = contrato.freelancer || servico.freelancer || {};
   const base = {
@@ -156,23 +164,41 @@ function mapContrato(req, contrato, usuarioAtualId = null) {
     idServico: servico._id ? servico._id.toString() : '',
     nomeServico: servico.nome || 'Serviço removido',
     descricaoServico: servico.descricao || '',
-    imagemServico: montarUrlImagem(req, servico.imagemServico || '/uploads/servicos/servico_padrao.svg'),
+    imagemServico: montarUrlImagem(
+      req,
+      servico.imagemServico || '/uploads/servicos/servico_padrao.svg'
+    ),
     preco: contrato.preco,
     precoProposto: contrato.precoProposto,
     mensagem: contrato.mensagem || '',
     detalhesPedido: contrato.detalhesPedido || '',
     prazoDesejado: contrato.prazoDesejado || '',
     referencias: contrato.referencias || '',
-    tipoContratacao: contrato.tipoContratacao === 'negociavel' ? 'fixo' : (contrato.tipoContratacao || 'fixo'),
-    status: contrato.status,
-    papel: usuarioAtualId ? (String(cliente._id) === String(usuarioAtualId) ? 'cliente' : 'freelancer') : '',
+    tipoContratacao:
+      contrato.tipoContratacao === 'negociavel' ? 'fixo' : contrato.tipoContratacao || 'fixo',
+    status: statusNormalizado,
+    papel: usuarioAtualId
+      ? String(cliente._id) === String(usuarioAtualId)
+        ? 'cliente'
+        : 'freelancer'
+      : '',
     cliente: cliente._id ? mapUsuarioPublico(req, cliente) : null,
     freelancer: freelancer._id ? mapUsuarioPublico(req, freelancer) : null,
     categoria: servico.categoria?.nome || '',
     createdAt: contrato.createdAt,
     updatedAt: contrato.updatedAt
   };
-  return { ...base, id_contrato: base.idContrato, id_servico: base.idServico, nome_servico: base.nomeServico, imagem_servico: base.imagemServico, preco_proposto: base.precoProposto, tipo_contratacao: base.tipoContratacao, detalhes_pedido: base.detalhesPedido, prazo_desejado: base.prazoDesejado };
+  return {
+    ...base,
+    id_contrato: base.idContrato,
+    id_servico: base.idServico,
+    nome_servico: base.nomeServico,
+    imagem_servico: base.imagemServico,
+    preco_proposto: base.precoProposto,
+    tipo_contratacao: base.tipoContratacao,
+    detalhes_pedido: base.detalhesPedido,
+    prazo_desejado: base.prazoDesejado
+  };
 }
 
 function mapFavorito(req, favorito) {
@@ -197,7 +223,21 @@ function mapAvaliacao(req, avaliacao) {
     comentario: avaliacao.comentario || '',
     createdAt: avaliacao.createdAt
   };
-  return { ...base, id_avaliacao: base.idAvaliacao, contrato_id: base.contratoId, nota_servico: base.notaServico, nota_freelancer: base.notaFreelancer };
+  return {
+    ...base,
+    id_avaliacao: base.idAvaliacao,
+    contrato_id: base.contratoId,
+    nota_servico: base.notaServico,
+    nota_freelancer: base.notaFreelancer
+  };
 }
 
-module.exports = { mapUsuario, mapUsuarioPrivado, mapUsuarioPublico, mapServico, mapContrato, mapFavorito, mapAvaliacao };
+module.exports = {
+  mapUsuario,
+  mapUsuarioPrivado,
+  mapUsuarioPublico,
+  mapServico,
+  mapContrato,
+  mapFavorito,
+  mapAvaliacao
+};

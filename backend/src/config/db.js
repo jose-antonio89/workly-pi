@@ -1,4 +1,3 @@
-
 const mongoose = require('mongoose');
 const ambiente = require('./ambiente');
 const Categoria = require('../models/Categoria');

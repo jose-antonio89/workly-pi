@@ -1,4 +1,3 @@
-
 const Notificacao = require('../models/Notificacao');
 const Mensagem = require('../models/Mensagem');
 const Contrato = require('../models/Contrato');
@@ -8,17 +7,20 @@ function usuarioId(req) {
   return req.user.id_usuario || req.user.idUsuario;
 }
 
-
 async function contratosDoUsuario(userId) {
   const contratos = await Contrato.find({
     $or: [{ cliente: userId }, { freelancer: userId }]
-  }).select('_id').lean();
+  })
+    .select('_id')
+    .lean();
 
-  return contratos.map(item => item._id);
+  return contratos.map((item) => item._id);
 }
 
 function normalizarContexto(value = '') {
-  const contexto = String(value || '').trim().toLowerCase();
+  const contexto = String(value || '')
+    .trim()
+    .toLowerCase();
   if (['contrato', 'contratos'].includes(contexto)) return 'contratos';
   if (['mensagem', 'mensagens', 'chat'].includes(contexto)) return 'mensagens';
   return '';
@@ -26,7 +28,11 @@ function normalizarContexto(value = '') {
 
 function deveExcluirNotificacoesDeMensagem(req) {
   const valor = req.query.excluirMensagens ?? req.query.excludeMessages ?? req.query.semMensagens;
-  return ['true', '1', 'sim', 'yes'].includes(String(valor || '').trim().toLowerCase());
+  return ['true', '1', 'sim', 'yes'].includes(
+    String(valor || '')
+      .trim()
+      .toLowerCase()
+  );
 }
 
 // lista as notificações do usuário logado, mais recentes primeiro.
@@ -114,8 +120,6 @@ exports.marcarLida = async (req, res) => {
   }
 };
 
-
-
 // marca como lidas as notificações de uma área inteira.
 // Usado quando o usuário clica no sino e abre Contratos ou Mensagens.
 exports.marcarContextoLidas = async (req, res) => {
@@ -193,10 +197,7 @@ exports.marcarTodasLidas = async (req, res) => {
     const contratoIds = await contratosDoUsuario(userId);
 
     const [resultadoNotificacoes, resultadoMensagens] = await Promise.all([
-      Notificacao.updateMany(
-        { destinatario: userId, lida: false },
-        { lida: true }
-      ),
+      Notificacao.updateMany({ destinatario: userId, lida: false }, { lida: true }),
       contratoIds.length
         ? Mensagem.updateMany(
             { contrato: { $in: contratoIds }, remetente: { $ne: userId }, lida: false },

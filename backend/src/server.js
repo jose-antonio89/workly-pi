@@ -1,4 +1,3 @@
-
 const app = require('./app');
 const connectDatabase = require('./config/db');
 const ambiente = require('./config/ambiente');

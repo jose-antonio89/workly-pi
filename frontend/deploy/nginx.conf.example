@@ -1,0 +1,20 @@
+# Example only: no production hosting provider is configured in this repository.
+# Replace API_UPSTREAM with the deployment's API origin and set the document root.
+server {
+    listen 80;
+    root /srv/workly/dist;
+    index index.html;
+    location /api/ {
+        proxy_pass API_UPSTREAM;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    location /uploads/ {
+        proxy_pass API_UPSTREAM;
+        proxy_set_header Host $host;
+    }
+    location /react-assets/ { try_files $uri =404; }
+    location /assets/ { try_files $uri =404; }
+    location /vendor/ { try_files $uri =404; }
+    location / { try_files $uri $uri/ /index.html; }
+}

@@ -1,6 +1,5 @@
 // utils para lidar com requisições: extrair campos de forma flexível, normalizar tipos, etc.
 
-
 function obterCampo(obj, nomes = [], valorPadrao = undefined) {
   for (const nome of nomes) {
     if (obj?.[nome] !== undefined) {
@@ -13,10 +12,16 @@ function obterCampo(obj, nomes = [], valorPadrao = undefined) {
 // normaliza o tipo de conta para os valores esperados no banco: 'Freelancer' ou 'Contratante'
 
 function normalizarTipoConta(valor) {
-  const texto = String(valor || '').trim().toLowerCase();
+  const texto = String(valor || '')
+    .trim()
+    .toLowerCase();
   if (texto === 'freelancer') return 'Freelancer';
   if (texto === 'contratante') return 'Contratante';
   return '';
 }
 
-module.exports = { obterCampo, normalizarTipoConta };
+function idMongoValido(valor) {
+  return typeof valor === 'string' && /^[a-f\d]{24}$/i.test(valor);
+}
+
+module.exports = { obterCampo, normalizarTipoConta, idMongoValido };

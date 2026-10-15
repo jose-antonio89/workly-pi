@@ -1,11 +1,10 @@
-
 const mongoose = require('mongoose');
 
 const servicoSchema = new mongoose.Schema(
   {
     nome: { type: String, required: true, trim: true },
     descricao: { type: String, required: true, trim: true },
-    preco: { type: Number, default: null },
+    preco: { type: Number, default: null, min: 0.01 },
     precoNegociavel: { type: Boolean, default: false },
     valorCombinar: { type: Boolean, default: false },
     extra: { type: String, default: '', trim: true },
@@ -15,7 +14,6 @@ const servicoSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
 
 servicoSchema.index({ categoria: 1, createdAt: -1 });
 servicoSchema.index({ freelancer: 1, createdAt: -1 });

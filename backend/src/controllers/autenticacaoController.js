@@ -1,4 +1,3 @@
-
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Usuario = require('../models/Usuario');
@@ -65,7 +64,8 @@ exports.cadastrar = async (req, res) => {
       cpf: cpfNormalizado,
       telefone: telefone ? String(telefone).trim() : '',
       tipoConta: tipoContaNormalizado,
-      areaAtuacao: tipoContaNormalizado === 'Freelancer' ? String(areaAtuacaoRecebida || '').trim() : ''
+      areaAtuacao:
+        tipoContaNormalizado === 'Freelancer' ? String(areaAtuacaoRecebida || '').trim() : ''
     });
 
     return sucesso(res, 201, 'Cadastro realizado com sucesso!');

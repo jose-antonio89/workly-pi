@@ -1,8 +1,8 @@
-
 const Favorito = require('../models/Favorito');
 const Servico = require('../models/Servico');
 const { sucesso, erro } = require('../utils/apiResponse');
 const { mapFavorito } = require('../utils/mapeadoresResposta');
+const { idMongoValido } = require('../utils/requisicaoUtils');
 
 function usuarioId(req) {
   return req.user.id_usuario || req.user.idUsuario;
@@ -20,7 +20,12 @@ exports.listar = async (req, res) => {
     const favoritos = await popular(
       Favorito.find({ usuario: usuarioId(req) }).sort({ createdAt: -1 })
     );
-    return sucesso(res, 200, 'Favoritos carregados.', favoritos.map(f => mapFavorito(req, f)));
+    return sucesso(
+      res,
+      200,
+      'Favoritos carregados.',
+      favoritos.map((f) => mapFavorito(req, f))
+    );
   } catch (error) {
     console.error(error);
     return erro(res, 500, 'Erro ao buscar favoritos.');
@@ -29,6 +34,8 @@ exports.listar = async (req, res) => {
 
 exports.verificar = async (req, res) => {
   try {
+    if (!idMongoValido(req.params.servicoId))
+      return erro(res, 400, 'Identificador de serviço inválido.');
     const favorito = await Favorito.findOne({
       usuario: usuarioId(req),
       servico: req.params.servicoId
@@ -46,6 +53,7 @@ exports.criar = async (req, res) => {
     const { servicoId } = req.body;
 
     if (!servicoId) return erro(res, 400, 'Serviço não informado.');
+    if (!idMongoValido(servicoId)) return erro(res, 400, 'Identificador de serviço inválido.');
 
     const servico = await Servico.findById(servicoId);
     if (!servico) return erro(res, 404, 'Serviço não encontrado.');
@@ -67,6 +75,8 @@ exports.criar = async (req, res) => {
 
 exports.removerPorServico = async (req, res) => {
   try {
+    if (!idMongoValido(req.params.servicoId))
+      return erro(res, 400, 'Identificador de serviço inválido.');
     await Favorito.deleteOne({ usuario: usuarioId(req), servico: req.params.servicoId });
     return sucesso(res, 200, 'Serviço removido dos favoritos.', { removido: true });
   } catch (error) {

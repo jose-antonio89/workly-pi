@@ -1,4 +1,3 @@
-
 const express = require('express');
 const controller = require('../controllers/usuarioController');
 const autenticacaoMiddleware = require('../middleware/autenticacaoMiddleware');
@@ -15,7 +14,12 @@ router.put('/perfil', autenticacaoMiddleware, controller.atualizarPerfil);
 
 router.patch('/tipo-conta', autenticacaoMiddleware, controller.alterarTipoConta);
 
-router.post('/perfil/foto', autenticacaoMiddleware, uploadPerfil.single('nova_foto'), controller.atualizarFoto);
+router.post(
+  '/perfil/foto',
+  autenticacaoMiddleware,
+  uploadPerfil.single('nova_foto'),
+  controller.atualizarFoto
+);
 
 router.put('/perfil/senha', autenticacaoMiddleware, controller.atualizarSenha);
 
@@ -28,7 +32,12 @@ router.put('/profile', autenticacaoMiddleware, controller.atualizarPerfil);
 
 router.patch('/account-type', autenticacaoMiddleware, controller.alterarTipoConta);
 
-router.post('/profile/photo', autenticacaoMiddleware, uploadPerfil.single('nova_foto'), controller.atualizarFoto);
+router.post(
+  '/profile/photo',
+  autenticacaoMiddleware,
+  uploadPerfil.single('nova_foto'),
+  controller.atualizarFoto
+);
 
 router.put('/profile/password', autenticacaoMiddleware, controller.atualizarSenha);
 

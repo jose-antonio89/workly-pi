@@ -1,4 +1,3 @@
-
 const express = require('express');
 const controller = require('../controllers/contratoController');
 const auth = require('../middleware/autenticacaoMiddleware');
@@ -17,6 +16,8 @@ router.post('/:id/recusar', auth, controller.recusar);
 router.post('/:id/iniciar', auth, controller.iniciar);
 
 router.post('/:id/entregar', auth, controller.entregar);
+
+router.post('/:id/confirmar', auth, controller.confirmarEntrega);
 
 router.post('/:id/cancelar', auth, controller.cancelar);
 

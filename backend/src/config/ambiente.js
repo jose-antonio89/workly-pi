@@ -1,16 +1,21 @@
-
 const path = require('path');
 const dotenv = require('dotenv');
 
-// carrega o .env do backend. se não tiver .env, ele usa os valores de desenvolvimento logo abaixo.
+// carrega o .env local. O segredo JWT é obrigatório para impedir tokens previsíveis.
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
+const jwtSecret = String(process.env.JWT_SECRET || '').trim();
+if (!jwtSecret) {
+  throw new Error(
+    'JWT_SECRET não configurado. Copie .env.example para .env e defina uma chave segura.'
+  );
+}
 
 module.exports = {
   port: process.env.PORT || 3000,
   mongoUri: process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/workly',
 
-  // em projeto local esse fallback ajuda, mas no .env real é melhor trocar por uma chave grande.
-  jwtSecret: process.env.JWT_SECRET || 'workly_dev_secret',
+  jwtSecret,
 
   // com * fica tranquilo testar com live server. em produção, coloque o domínio do frontend.
   frontendUrl: process.env.FRONTEND_URL || '*',

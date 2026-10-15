@@ -1,4 +1,3 @@
-
 const express = require('express');
 const controller = require('../controllers/servicoController');
 const autenticacaoMiddleware = require('../middleware/autenticacaoMiddleware');
@@ -17,7 +16,12 @@ router.post('/', autenticacaoMiddleware, uploadServico.single('imagem_servico'),
 
 router.get('/:id', controller.buscarPorId);
 
-router.put('/:id', autenticacaoMiddleware, uploadServico.single('imagem_servico'), controller.atualizar);
+router.put(
+  '/:id',
+  autenticacaoMiddleware,
+  uploadServico.single('imagem_servico'),
+  controller.atualizar
+);
 
 router.delete('/:id', autenticacaoMiddleware, controller.remover);
 

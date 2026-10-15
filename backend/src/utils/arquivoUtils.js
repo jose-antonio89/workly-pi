@@ -1,9 +1,12 @@
-
 const fs = require('fs');
 const path = require('path');
 
 function removerArquivoSeExistir(caminhoRelativo) {
-  if (!caminhoRelativo || typeof caminhoRelativo !== 'string' || !caminhoRelativo.startsWith('/uploads/')) {
+  if (
+    !caminhoRelativo ||
+    typeof caminhoRelativo !== 'string' ||
+    !caminhoRelativo.startsWith('/uploads/')
+  ) {
     return;
   }
 

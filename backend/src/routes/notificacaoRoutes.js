@@ -1,4 +1,3 @@
-
 const express = require('express');
 const controller = require('../controllers/notificacaoController');
 const auth = require('../middleware/autenticacaoMiddleware');

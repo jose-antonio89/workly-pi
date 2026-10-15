@@ -1,10 +1,18 @@
-
 const mongoose = require('mongoose');
 const Mensagem = require('../models/Mensagem');
 const Contrato = require('../models/Contrato');
 const Notificacao = require('../models/Notificacao');
 const { sucesso, erro } = require('../utils/apiResponse');
 const { notificarMensagemNova } = require('../utils/notificacaoUtils');
+const { idMongoValido } = require('../utils/requisicaoUtils');
+
+const STATUS_CHAT_ATIVO = [
+  'pendente',
+  'proposta_pendente',
+  'proposta_aceita',
+  'em_andamento',
+  'entregue'
+];
 
 function usuarioId(req) {
   return req.user.id_usuario || req.user.idUsuario;
@@ -19,7 +27,7 @@ function toObjectId(value) {
 // sem isso qualquer pessoa poderia tentar abrir conversa pelo id.
 async function carregarContratoDoUsuario(contratoId, userId) {
   const contrato = await Contrato.findById(contratoId)
-    .select('servico cliente freelancer')
+    .select('servico cliente freelancer status')
     .populate('servico', 'nome')
     .populate('cliente', 'nome')
     .populate('freelancer', 'nome')
@@ -36,9 +44,8 @@ async function carregarContratoDoUsuario(contratoId, userId) {
 }
 
 // envia uma mensagem no chat de um contrato.
-// apenas as duas partes do contrato podem escrever — contratos finalizados aceitam mensagens também,
-// pois as partes podem precisar trocar informações mesmo após a conclusão.
-// envia uma mensagem dentro de um contrato e avisa a outra pessoa com notificação.
+// O chat fica disponível apenas enquanto o contrato está ativo.
+// Contratos concluídos, encerrados ou cancelados não entram na central de mensagens.
 exports.enviar = async (req, res) => {
   try {
     const userId = usuarioId(req);
@@ -46,11 +53,16 @@ exports.enviar = async (req, res) => {
     const texto = String(req.body.texto || '').trim();
 
     if (!contratoId) return erro(res, 400, 'Informe o contrato.');
+    if (!idMongoValido(contratoId)) return erro(res, 400, 'Identificador de contrato inválido.');
     if (!texto) return erro(res, 400, 'A mensagem não pode estar vazia.');
-    if (texto.length > 2000) return erro(res, 400, 'Mensagem muito longa (máximo 2000 caracteres).');
+    if (texto.length > 2000)
+      return erro(res, 400, 'Mensagem muito longa (máximo 2000 caracteres).');
 
     const contrato = await carregarContratoDoUsuario(contratoId, userId);
     if (!contrato) return erro(res, 403, 'Você não faz parte deste contrato ou ele não existe.');
+    if (!STATUS_CHAT_ATIVO.includes(contrato.status)) {
+      return erro(res, 400, 'O chat deste contrato não está mais ativo.');
+    }
 
     const mensagem = await Mensagem.create({
       contrato: contratoId,
@@ -66,7 +78,10 @@ exports.enviar = async (req, res) => {
 
     await notificarMensagemNova(destinatario, mensagem._id, nomeRemetente, nomeServico);
 
-    const mensagemPopulada = await Mensagem.findById(mensagem._id).populate('remetente', 'nome fotoPerfil tipoConta');
+    const mensagemPopulada = await Mensagem.findById(mensagem._id).populate(
+      'remetente',
+      'nome fotoPerfil tipoConta'
+    );
 
     return sucesso(res, 201, 'Mensagem enviada.', mapMensagem(req, mensagemPopulada));
   } catch (error) {
@@ -84,10 +99,13 @@ exports.resumoPorContrato = async (req, res) => {
     const userId = usuarioId(req);
 
     const contratos = await Contrato.find({
+      status: { $in: STATUS_CHAT_ATIVO },
       $or: [{ cliente: userId }, { freelancer: userId }]
-    }).select('_id').lean();
+    })
+      .select('_id')
+      .lean();
 
-    const contratoIds = contratos.map(c => c._id);
+    const contratoIds = contratos.map((c) => c._id);
     if (!contratoIds.length) {
       return sucesso(res, 200, 'Resumo carregado.', []);
     }
@@ -104,13 +122,15 @@ exports.resumoPorContrato = async (req, res) => {
         { $sort: { 'ultimaMensagem.createdAt': -1 } }
       ]),
       Mensagem.aggregate([
-        { $match: { contrato: { $in: contratoIds }, remetente: { $ne: userObjectId }, lida: false } },
+        {
+          $match: { contrato: { $in: contratoIds }, remetente: { $ne: userObjectId }, lida: false }
+        },
         { $group: { _id: '$contrato', naoLidas: { $sum: 1 } } }
       ])
     ]);
 
-    const naoLidasPorContrato = new Map(naoLidas.map(item => [String(item._id), item.naoLidas]));
-    const mensagens = ultimas.map(item => item.ultimaMensagem);
+    const naoLidasPorContrato = new Map(naoLidas.map((item) => [String(item._id), item.naoLidas]));
+    const mensagens = ultimas.map((item) => item.ultimaMensagem);
     await Mensagem.populate(mensagens, { path: 'remetente', select: 'nome fotoPerfil tipoConta' });
 
     const resumo = mensagens.map((mensagem) => ({
@@ -133,9 +153,13 @@ exports.listarPorContrato = async (req, res) => {
   try {
     const userId = usuarioId(req);
     const { contratoId } = req.params;
+    if (!idMongoValido(contratoId)) return erro(res, 400, 'Identificador de contrato inválido.');
 
     const contrato = await carregarContratoDoUsuario(contratoId, userId);
     if (!contrato) return erro(res, 403, 'Você não faz parte deste contrato ou ele não existe.');
+    if (!STATUS_CHAT_ATIVO.includes(contrato.status)) {
+      return erro(res, 400, 'O chat deste contrato não está mais ativo.');
+    }
 
     // marca como lidas as mensagens enviadas pelo outro usuário neste contrato.
     // Depois limpa as notificações dessas mensagens para o sino não ficar preso.
@@ -143,9 +167,11 @@ exports.listarPorContrato = async (req, res) => {
       contrato: contratoId,
       remetente: { $ne: userId },
       lida: false
-    }).select('_id').lean();
+    })
+      .select('_id')
+      .lean();
 
-    const mensagemIds = mensagensPendentes.map(item => item._id);
+    const mensagemIds = mensagensPendentes.map((item) => item._id);
 
     await Promise.all([
       Mensagem.updateMany(
@@ -154,7 +180,12 @@ exports.listarPorContrato = async (req, res) => {
       ),
       mensagemIds.length
         ? Notificacao.updateMany(
-            { destinatario: userId, tipo: 'mensagem_nova', referenciaId: { $in: mensagemIds }, lida: false },
+            {
+              destinatario: userId,
+              tipo: 'mensagem_nova',
+              referenciaId: { $in: mensagemIds },
+              lida: false
+            },
             { lida: true }
           )
         : Promise.resolve()
@@ -165,7 +196,12 @@ exports.listarPorContrato = async (req, res) => {
       .sort({ createdAt: 1 })
       .lean();
 
-    return sucesso(res, 200, 'Mensagens carregadas.', mensagens.map(m => mapMensagem(req, m)));
+    return sucesso(
+      res,
+      200,
+      'Mensagens carregadas.',
+      mensagens.map((m) => mapMensagem(req, m))
+    );
   } catch (error) {
     console.error(error);
     return erro(res, 500, 'Erro ao buscar mensagens.');
@@ -181,10 +217,13 @@ exports.contarNaoLidas = async (req, res) => {
 
     // busca contratos nos quais o usuário participa.
     const contratos = await Contrato.find({
+      status: { $in: STATUS_CHAT_ATIVO },
       $or: [{ cliente: userId }, { freelancer: userId }]
-    }).select('_id').lean();
+    })
+      .select('_id')
+      .lean();
 
-    const contratoIds = contratos.map(c => c._id);
+    const contratoIds = contratos.map((c) => c._id);
 
     const total = await Mensagem.countDocuments({
       contrato: { $in: contratoIds },
@@ -203,7 +242,9 @@ function mapMensagem(req, mensagem) {
   const remetente = mensagem.remetente || {};
   const host = `${req.protocol}://${req.get('host')}`;
   const fotoPerfil = remetente.fotoPerfil
-    ? (remetente.fotoPerfil.startsWith('http') ? remetente.fotoPerfil : `${host}${remetente.fotoPerfil}`)
+    ? remetente.fotoPerfil.startsWith('http')
+      ? remetente.fotoPerfil
+      : `${host}${remetente.fotoPerfil}`
     : `${host}/uploads/perfis/perfil_padrao.svg`;
 
   return {

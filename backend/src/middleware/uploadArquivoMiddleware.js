@@ -1,4 +1,3 @@
-
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -13,7 +12,10 @@ function criarUpload(pasta, prefixo) {
     destination: (_req, _file, callback) => callback(null, destino),
     filename: (req, file, callback) => {
       const idUsuario = req.user?.id_usuario || req.user?.idUsuario || 'anon';
-      callback(null, `${prefixo}_${idUsuario}_${Date.now()}${path.extname(file.originalname).toLowerCase()}`);
+      callback(
+        null,
+        `${prefixo}_${idUsuario}_${Date.now()}${path.extname(file.originalname).toLowerCase()}`
+      );
     }
   });
 

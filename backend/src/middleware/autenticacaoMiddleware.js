@@ -1,4 +1,3 @@
-
 const jwt = require('jsonwebtoken');
 const ambiente = require('../config/ambiente');
 const { erro } = require('../utils/apiResponse');

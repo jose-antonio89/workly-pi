@@ -1,19 +1,30 @@
-
 const bcrypt = require('bcryptjs');
 const Servico = require('../models/Servico');
 const Usuario = require('../models/Usuario');
 const Avaliacao = require('../models/Avaliacao');
 const Contrato = require('../models/Contrato');
 const Favorito = require('../models/Favorito');
-const { mapServico, mapUsuario, mapUsuarioPublico, mapAvaliacao, mapContrato } = require('../utils/mapeadoresResposta');
+const {
+  mapServico,
+  mapUsuario,
+  mapUsuarioPublico,
+  mapAvaliacao,
+  mapContrato
+} = require('../utils/mapeadoresResposta');
 const { sucesso, erro } = require('../utils/apiResponse');
-const { obterCampo, normalizarTipoConta: normalizarTipoContaValor } = require('../utils/requisicaoUtils');
+const {
+  obterCampo,
+  normalizarTipoConta: normalizarTipoContaValor,
+  idMongoValido
+} = require('../utils/requisicaoUtils');
 const { removerArquivoSeExistir } = require('../utils/arquivoUtils');
 
 function ehArquivoPadrao(caminho = '') {
-  return String(caminho).endsWith('perfil_padrao.png')
-    || String(caminho).endsWith('perfil_padrao.svg')
-    || String(caminho).endsWith('servico_padrao.svg');
+  return (
+    String(caminho).endsWith('perfil_padrao.png') ||
+    String(caminho).endsWith('perfil_padrao.svg') ||
+    String(caminho).endsWith('servico_padrao.svg')
+  );
 }
 
 function obterMesesRecentes(quantidade = 6) {
@@ -69,13 +80,15 @@ function statusLegivel(status) {
 
 function ordenarAtividades(atividades, limite = 3) {
   return atividades
-    .filter(item => item && item.date)
+    .filter((item) => item && item.date)
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .slice(0, limite);
 }
 
 function normalizarTipoConta(tipoConta = '') {
-  return String(tipoConta || '').trim().toLowerCase();
+  return String(tipoConta || '')
+    .trim()
+    .toLowerCase();
 }
 
 function usuarioEhFreelancer(usuario, totalServicosPublicados = 0) {
@@ -88,6 +101,33 @@ function usuarioEhContratante(usuario) {
   return tipo.includes('contratante') || tipo.includes('cliente');
 }
 
+async function anexarResumoAvaliacoesServicos(servicos = []) {
+  const lista = Array.isArray(servicos) ? servicos : [servicos];
+  const ids = lista.map((servico) => servico?._id).filter(Boolean);
+
+  if (!ids.length) return Array.isArray(servicos) ? [] : null;
+
+  const resumo = await Avaliacao.aggregate([
+    { $match: { servico: { $in: ids } } },
+    { $group: { _id: '$servico', total: { $sum: 1 }, media: { $avg: '$notaServico' } } }
+  ]);
+
+  const porServico = new Map(resumo.map((item) => [String(item._id), item]));
+
+  const comResumo = lista.map((servico) => {
+    const base = servico?.toObject ? servico.toObject() : servico;
+    const item = porServico.get(String(base._id)) || { total: 0, media: 0 };
+
+    return {
+      ...base,
+      avaliacaoMediaServico: item.total ? Number(Number(item.media || 0).toFixed(1)) : 0,
+      totalAvaliacoesServico: item.total || 0
+    };
+  });
+
+  return Array.isArray(servicos) ? comResumo : comResumo[0];
+}
+
 async function montarDashboardPerfil(req, usuario, totalServicosPublicados = 0) {
   const usuarioId = usuario._id;
   const isFreelancer = usuarioEhFreelancer(usuario, totalServicosPublicados);
@@ -95,13 +135,17 @@ async function montarDashboardPerfil(req, usuario, totalServicosPublicados = 0) 
   const meses = obterMesesRecentes(6);
   const indiceMeses = new Map(meses.map((mes, index) => [mes.key, index]));
 
-  const contratos = await Contrato.find({ $or: [{ freelancer: usuarioId }, { cliente: usuarioId }] })
+  const contratos = await Contrato.find({
+    $or: [{ freelancer: usuarioId }, { cliente: usuarioId }]
+  })
     .populate({ path: 'servico', populate: [{ path: 'categoria' }, { path: 'freelancer' }] })
     .populate('cliente')
     .populate('freelancer')
     .sort({ updatedAt: -1, createdAt: -1 });
 
-  const avaliacoes = await Avaliacao.find({ $or: [{ freelancer: usuarioId }, { autor: usuarioId }] })
+  const avaliacoes = await Avaliacao.find({
+    $or: [{ freelancer: usuarioId }, { autor: usuarioId }]
+  })
     .populate('autor')
     .populate('freelancer')
     .populate({ path: 'servico', populate: [{ path: 'categoria' }, { path: 'freelancer' }] })
@@ -126,8 +170,10 @@ async function montarDashboardPerfil(req, usuario, totalServicosPublicados = 0) 
   let quantidadePropostas = 0;
 
   contratos.forEach((contrato) => {
-    const userIsFreelancerInContract = String(contrato.freelancer?._id || contrato.freelancer) === String(usuarioId);
-    const userIsClientInContract = String(contrato.cliente?._id || contrato.cliente) === String(usuarioId);
+    const userIsFreelancerInContract =
+      String(contrato.freelancer?._id || contrato.freelancer) === String(usuarioId);
+    const userIsClientInContract =
+      String(contrato.cliente?._id || contrato.cliente) === String(usuarioId);
     const createdIndex = indiceMeses.get(obterChaveMes(contrato.createdAt));
     const status = String(contrato.status || 'pendente');
     const tipoContratacao = String(contrato.tipoContratacao || 'fixo');
@@ -145,8 +191,8 @@ async function montarDashboardPerfil(req, usuario, totalServicosPublicados = 0) 
       valorTotal += valor;
 
       const label = userIsFreelancerInContract
-        ? (contrato.servico?.nome || 'Serviço')
-        : (contrato.servico?.categoria?.nome || contrato.servico?.nome || 'Serviço');
+        ? contrato.servico?.nome || 'Serviço'
+        : contrato.servico?.categoria?.nome || contrato.servico?.nome || 'Serviço';
       revenueByLabel.set(label, (revenueByLabel.get(label) || 0) + valor);
     }
   });
@@ -169,16 +215,23 @@ async function montarDashboardPerfil(req, usuario, totalServicosPublicados = 0) 
   const atividades = [];
 
   contratos.slice(0, 20).forEach((contrato) => {
-    const userIsFreelancerInContract = String(contrato.freelancer?._id || contrato.freelancer) === String(usuarioId);
+    const userIsFreelancerInContract =
+      String(contrato.freelancer?._id || contrato.freelancer) === String(usuarioId);
     const servicoNome = contrato.servico?.nome || 'Serviço';
-    const outraPessoa = userIsFreelancerInContract ? contrato.cliente?.nome : contrato.freelancer?.nome;
+    const outraPessoa = userIsFreelancerInContract
+      ? contrato.cliente?.nome
+      : contrato.freelancer?.nome;
     const tipo = contrato.tipoContratacao === 'fixo' ? 'contrato' : 'proposta';
     atividades.push({
       tipo: 'contrato',
       icon: tipo === 'proposta' ? 'fa-handshake' : 'fa-file-signature',
       titulo: userIsFreelancerInContract
-        ? (tipo === 'proposta' ? 'Proposta recebida' : 'Contratação recebida')
-        : (tipo === 'proposta' ? 'Proposta enviada' : 'Contratação criada'),
+        ? tipo === 'proposta'
+          ? 'Proposta recebida'
+          : 'Contratação recebida'
+        : tipo === 'proposta'
+          ? 'Proposta enviada'
+          : 'Contratação criada',
       descricao: `${outraPessoa || 'Usuário'} · ${servicoNome}`,
       status: statusLegivel(contrato.status),
       valor: valorContrato(contrato),
@@ -189,7 +242,8 @@ async function montarDashboardPerfil(req, usuario, totalServicosPublicados = 0) 
   });
 
   avaliacoes.slice(0, 12).forEach((avaliacao) => {
-    const userIsFreelancerInReview = String(avaliacao.freelancer?._id || avaliacao.freelancer) === String(usuarioId);
+    const userIsFreelancerInReview =
+      String(avaliacao.freelancer?._id || avaliacao.freelancer) === String(usuarioId);
     const servicoNome = avaliacao.servico?.nome || 'Serviço';
     const pessoa = userIsFreelancerInReview ? avaliacao.autor?.nome : avaliacao.freelancer?.nome;
     atividades.push({
@@ -248,7 +302,7 @@ async function montarDashboardPerfil(req, usuario, totalServicosPublicados = 0) 
     weeklyData[index] += 1;
   });
 
-  const totalAtividades = atividades.filter(item => item && item.date).length;
+  const totalAtividades = atividades.filter((item) => item && item.date).length;
   const atividadesOrdenadas = ordenarAtividades(atividades, 3);
 
   return {
@@ -258,19 +312,28 @@ async function montarDashboardPerfil(req, usuario, totalServicosPublicados = 0) 
       propostas: quantidadePropostas,
       servicosPublicados: servicosPublicados.length,
       atividades: totalAtividades,
-      modo: isFreelancer && !isContratante ? 'freelancer' : (isContratante && !isFreelancer ? 'contratante' : 'misto')
+      modo:
+        isFreelancer && !isContratante
+          ? 'freelancer'
+          : isContratante && !isFreelancer
+            ? 'contratante'
+            : 'misto'
     },
     monthlyPerformance: {
-      labels: meses.map(mes => mes.label),
+      labels: meses.map((mes) => mes.label),
       primaryLabel: isFreelancer ? 'Receita confirmada (R$)' : 'Gastos confirmados (R$)',
-      primaryData: primaryData.map(valor => Number(valor.toFixed(2))),
+      primaryData: primaryData.map((valor) => Number(valor.toFixed(2))),
       secondaryLabel: 'Atividades',
       secondaryData
     },
     revenueDistribution: {
       title: isFreelancer ? 'Receita confirmada por serviço' : 'Gastos confirmados por categoria',
-      labels: distributionEntries.length ? distributionEntries.map(([label]) => label) : ['Sem movimentação ainda'],
-      data: distributionEntries.length ? distributionEntries.map(([, valor]) => Number(valor.toFixed(2))) : [1],
+      labels: distributionEntries.length
+        ? distributionEntries.map(([label]) => label)
+        : ['Sem movimentação ainda'],
+      data: distributionEntries.length
+        ? distributionEntries.map(([, valor]) => Number(valor.toFixed(2)))
+        : [1],
       empty: distributionEntries.length === 0
     },
     weeklyActivity: {
@@ -306,7 +369,7 @@ exports.buscarPerfil = async (req, res) => {
         .populate('categoria')
         .populate('freelancer')
         .sort({ createdAt: -1 });
-      servicos = servicosDoUsuario.map(servico => mapServico(req, servico));
+      servicos = servicosDoUsuario.map((servico) => mapServico(req, servico));
 
       const avaliacoesRecebidas = await Avaliacao.find({ freelancer: usuario._id })
         .populate('autor')
@@ -314,10 +377,16 @@ exports.buscarPerfil = async (req, res) => {
         .populate({ path: 'servico', populate: [{ path: 'categoria' }, { path: 'freelancer' }] })
         .sort({ createdAt: -1 });
 
-      avaliacoes = avaliacoesRecebidas.map(avaliacao => mapAvaliacao(req, avaliacao));
+      avaliacoes = avaliacoesRecebidas.map((avaliacao) => mapAvaliacao(req, avaliacao));
       const total = avaliacoesRecebidas.length;
-      const somaFreelancer = avaliacoesRecebidas.reduce((acc, avaliacao) => acc + Number(avaliacao.notaFreelancer || 0), 0);
-      const somaServico = avaliacoesRecebidas.reduce((acc, avaliacao) => acc + Number(avaliacao.notaServico || 0), 0);
+      const somaFreelancer = avaliacoesRecebidas.reduce(
+        (acc, avaliacao) => acc + Number(avaliacao.notaFreelancer || 0),
+        0
+      );
+      const somaServico = avaliacoesRecebidas.reduce(
+        (acc, avaliacao) => acc + Number(avaliacao.notaServico || 0),
+        0
+      );
       const distribuicao = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
       avaliacoesRecebidas.forEach((avaliacao) => {
         const nota = Math.max(1, Math.min(5, Math.round(Number(avaliacao.notaFreelancer || 0))));
@@ -331,7 +400,11 @@ exports.buscarPerfil = async (req, res) => {
         distribuicao
       };
 
-      if (Number(usuario.avaliacaoMedia || 0).toFixed(1) !== resumoAvaliacoes.mediaFreelancer.toFixed(1) || Number(usuario.totalAvaliacoes || 0) !== total) {
+      if (
+        Number(usuario.avaliacaoMedia || 0).toFixed(1) !==
+          resumoAvaliacoes.mediaFreelancer.toFixed(1) ||
+        Number(usuario.totalAvaliacoes || 0) !== total
+      ) {
         await Usuario.findByIdAndUpdate(usuario._id, {
           avaliacaoMedia: resumoAvaliacoes.mediaFreelancer,
           totalAvaliacoes: total
@@ -347,7 +420,7 @@ exports.buscarPerfil = async (req, res) => {
         .sort({ createdAt: -1 })
         .limit(3);
 
-      leads = contratosRecebidos.map(contrato => mapContrato(req, contrato, usuario._id));
+      leads = contratosRecebidos.map((contrato) => mapContrato(req, contrato, usuario._id));
     }
 
     const dashboard = await montarDashboardPerfil(req, usuario, totalServicosPublicados);
@@ -368,6 +441,7 @@ exports.buscarPerfil = async (req, res) => {
 
 exports.buscarPerfilPublico = async (req, res) => {
   try {
+    if (!idMongoValido(req.params.id)) return erro(res, 400, 'Identificador de usuário inválido.');
     const usuario = await Usuario.findById(req.params.id);
     if (!usuario) return erro(res, 404, 'Usuário não encontrado.');
 
@@ -376,29 +450,51 @@ exports.buscarPerfilPublico = async (req, res) => {
       .populate('freelancer')
       .sort({ createdAt: -1 });
 
-    const avaliacoesRecebidas = await Avaliacao.find({ freelancer: usuario._id })
-      .populate('autor')
-      .populate('freelancer')
-      .populate({ path: 'servico', populate: [{ path: 'categoria' }, { path: 'freelancer' }] })
-      .sort({ createdAt: -1 })
-      .limit(12);
+    const [avaliacoesRecebidas, resumoAgregado] = await Promise.all([
+      Avaliacao.find({ freelancer: usuario._id })
+        .populate('autor')
+        .populate('freelancer')
+        .populate({ path: 'servico', populate: [{ path: 'categoria' }, { path: 'freelancer' }] })
+        .sort({ createdAt: -1 })
+        .limit(12),
+      Avaliacao.aggregate([
+        { $match: { freelancer: usuario._id } },
+        {
+          $facet: {
+            geral: [
+              {
+                $group: {
+                  _id: null,
+                  total: { $sum: 1 },
+                  mediaFreelancer: { $avg: '$notaFreelancer' }
+                }
+              }
+            ],
+            porNota: [{ $group: { _id: { $round: ['$notaFreelancer', 0] }, total: { $sum: 1 } } }]
+          }
+        }
+      ])
+    ]);
 
-    const total = avaliacoesRecebidas.length;
-    const somaFreelancer = avaliacoesRecebidas.reduce((acc, avaliacao) => acc + Number(avaliacao.notaFreelancer || 0), 0);
+    const geral = resumoAgregado[0]?.geral?.[0] || { total: 0, mediaFreelancer: 0 };
+    const total = Number(geral.total || 0);
+    const distribuicao = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    (resumoAgregado[0]?.porNota || []).forEach((item) => {
+      const nota = Math.max(1, Math.min(5, Number(item._id || 0)));
+      distribuicao[nota] = Number(item.total || 0);
+    });
     const resumoAvaliacoes = {
       total,
-      mediaFreelancer: total ? Number((somaFreelancer / total).toFixed(1)) : Number(usuario.avaliacaoMedia || 0),
-      distribuicao: avaliacoesRecebidas.reduce((acc, avaliacao) => {
-        const nota = Math.max(1, Math.min(5, Math.round(Number(avaliacao.notaFreelancer || 0))));
-        acc[nota] = (acc[nota] || 0) + 1;
-        return acc;
-      }, { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 })
+      mediaFreelancer: total ? Number(Number(geral.mediaFreelancer || 0).toFixed(1)) : 0,
+      distribuicao
     };
+
+    const servicosComResumo = await anexarResumoAvaliacoesServicos(servicosDoUsuario);
 
     return sucesso(res, 200, 'Perfil público carregado com sucesso.', null, {
       user: mapUsuarioPublico(req, usuario),
-      services: servicosDoUsuario.map(servico => mapServico(req, servico)),
-      reviews: avaliacoesRecebidas.map(avaliacao => mapAvaliacao(req, avaliacao)),
+      services: servicosComResumo.map((servico) => mapServico(req, servico)),
+      reviews: avaliacoesRecebidas.map((avaliacao) => mapAvaliacao(req, avaliacao)),
       reviewSummary: resumoAvaliacoes,
       modo: usuarioEhFreelancer(usuario, servicosDoUsuario.length) ? 'freelancer' : 'contratante'
     });
@@ -436,9 +532,14 @@ exports.atualizarPerfil = async (req, res) => {
       chavePix: obterCampo(req.body, ['chavePix', 'chave_pix']),
       banco: obterCampo(req.body, ['banco']),
       notificacoesEmail: obterCampo(req.body, ['notificacoesEmail', 'notificacoes_email']),
-      notificacoesPropostas: obterCampo(req.body, ['notificacoesPropostas', 'notificacoes_propostas']),
-      notificacoesMarketing: obterCampo(req.body, ['notificacoesMarketing', 'notificacoes_marketing']),
-      doisFatores: obterCampo(req.body, ['doisFatores', 'dois_fatores'])
+      notificacoesPropostas: obterCampo(req.body, [
+        'notificacoesPropostas',
+        'notificacoes_propostas'
+      ]),
+      notificacoesMarketing: obterCampo(req.body, [
+        'notificacoesMarketing',
+        'notificacoes_marketing'
+      ])
     };
 
     Object.keys(camposPermitidos).forEach((chave) => {
@@ -447,7 +548,10 @@ exports.atualizarPerfil = async (req, res) => {
       }
     });
 
-    const usuario = await Usuario.findByIdAndUpdate(req.user.id_usuario, camposPermitidos, { new: true, runValidators: true });
+    const usuario = await Usuario.findByIdAndUpdate(req.user.id_usuario, camposPermitidos, {
+      new: true,
+      runValidators: true
+    });
     if (!usuario) {
       return erro(res, 404, 'Usuário não encontrado.');
     }
@@ -471,7 +575,9 @@ exports.alterarTipoConta = async (req, res) => {
     }
 
     const novoTipo = normalizarTipoContaValor(obterCampo(req.body, ['tipoConta', 'tipo_conta']));
-    const areaAtuacao = String(obterCampo(req.body, ['areaAtuacao', 'area_atuacao'], '') || '').trim();
+    const areaAtuacao = String(
+      obterCampo(req.body, ['areaAtuacao', 'area_atuacao'], '') || ''
+    ).trim();
 
     if (!novoTipo) {
       return erro(res, 400, 'Tipo de conta inválido.');
@@ -546,7 +652,11 @@ exports.atualizarFoto = async (req, res) => {
     }
 
     const caminhoBanco = `/uploads/perfis/${req.file.filename}`;
-    const usuario = await Usuario.findByIdAndUpdate(req.user.id_usuario, { fotoPerfil: caminhoBanco }, { new: true });
+    const usuario = await Usuario.findByIdAndUpdate(
+      req.user.id_usuario,
+      { fotoPerfil: caminhoBanco },
+      { new: true }
+    );
 
     if (usuarioAnterior.fotoPerfil && !ehArquivoPadrao(usuarioAnterior.fotoPerfil)) {
       removerArquivoSeExistir(usuarioAnterior.fotoPerfil);
@@ -613,7 +723,7 @@ exports.excluirPerfil = async (req, res) => {
       }
     });
 
-    const servicoIds = servicos.map(servico => servico._id);
+    const servicoIds = servicos.map((servico) => servico._id);
 
     await Promise.all([
       // serviços publicados pelo usuário.
@@ -624,19 +734,12 @@ exports.excluirPerfil = async (req, res) => {
 
       // avaliações que ele escreveu, recebeu ou vinculadas aos serviços removidos.
       Avaliacao.deleteMany({
-        $or: [
-          { autor: userId },
-          { freelancer: userId },
-          { servico: { $in: servicoIds } }
-        ]
+        $or: [{ autor: userId }, { freelancer: userId }, { servico: { $in: servicoIds } }]
       }),
 
       // favoritos do usuário e favoritos que apontavam para serviços removidos.
       Favorito.deleteMany({
-        $or: [
-          { usuario: userId },
-          { servico: { $in: servicoIds } }
-        ]
+        $or: [{ usuario: userId }, { servico: { $in: servicoIds } }]
       })
     ]);
 

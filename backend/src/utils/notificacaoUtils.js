@@ -1,4 +1,3 @@
-
 const Notificacao = require('../models/Notificacao');
 
 // textos de cada tipo de notificação
@@ -26,7 +25,7 @@ const TEMPLATES = {
   }),
   entrega_realizada: (nomeServico) => ({
     titulo: 'Entrega realizada!',
-    mensagem: `O freelancer marcou "${nomeServico}" como entregue. Avalie o serviço!`
+    mensagem: `O freelancer marcou "${nomeServico}" como entregue. Confira o serviço e confirme o recebimento.`
   }),
   contrato_cancelado: (nomeServico, quemCancelou) => ({
     titulo: 'Contrato cancelado',
@@ -50,9 +49,23 @@ const TEMPLATES = {
 
 // função central pra criar notificação.
 // assim os controllers não precisam montar título/mensagem toda hora.
-async function criarNotificacao({ destinatario, tipo, titulo, mensagem, referenciaId = null, tipoReferencia = null }) {
+async function criarNotificacao({
+  destinatario,
+  tipo,
+  titulo,
+  mensagem,
+  referenciaId = null,
+  tipoReferencia = null
+}) {
   try {
-    await Notificacao.create({ destinatario, tipo, titulo, mensagem, referenciaId, tipoReferencia });
+    await Notificacao.create({
+      destinatario,
+      tipo,
+      titulo,
+      mensagem,
+      referenciaId,
+      tipoReferencia
+    });
   } catch (err) {
     console.error('[notificacaoUtils] Falha ao criar notificação:', err.message);
   }
@@ -63,8 +76,16 @@ async function criarNotificacao({ destinatario, tipo, titulo, mensagem, referenc
 async function notificarContratoNovo(freelancerId, contratoId, nomeServico, tipoContratacao) {
   const ehProposta = tipoContratacao !== 'fixo';
   const tipo = ehProposta ? 'proposta_nova' : 'contrato_novo';
-  const template = ehProposta ? TEMPLATES.proposta_nova(nomeServico) : TEMPLATES.contrato_novo(nomeServico);
-  await criarNotificacao({ destinatario: freelancerId, tipo, ...template, referenciaId: contratoId, tipoReferencia: 'contrato' });
+  const template = ehProposta
+    ? TEMPLATES.proposta_nova(nomeServico)
+    : TEMPLATES.contrato_novo(nomeServico);
+  await criarNotificacao({
+    destinatario: freelancerId,
+    tipo,
+    ...template,
+    referenciaId: contratoId,
+    tipoReferencia: 'contrato'
+  });
 }
 
 async function notificarPropostaAceita(clienteId, contratoId, nomeServico) {

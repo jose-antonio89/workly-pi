@@ -1,4 +1,3 @@
-
 const mongoose = require('mongoose');
 const { normalizarCpf, validarCpf } = require('../utils/cpfUtils');
 
@@ -41,15 +40,14 @@ const usuarioSchema = new mongoose.Schema(
     notificacoesEmail: { type: Boolean, default: true },
     notificacoesPropostas: { type: Boolean, default: true },
     notificacoesMarketing: { type: Boolean, default: false },
-    doisFatores: { type: Boolean, default: false },
     avaliacaoMedia: { type: Number, default: 0 },
     totalAvaliacoes: { type: Number, default: 0 }
   },
   { timestamps: true }
 );
 
-
 usuarioSchema.index({ tipoConta: 1, localizacao: 1 });
 usuarioSchema.index({ tipoConta: 1, disponibilidade: 1 });
+usuarioSchema.index({ avaliacaoMedia: -1, totalAvaliacoes: -1 });
 
 module.exports = mongoose.model('Usuario', usuarioSchema);

@@ -1,9 +1,9 @@
-
 const Contrato = require('../models/Contrato');
 const Servico = require('../models/Servico');
 const Avaliacao = require('../models/Avaliacao');
 const { sucesso, erro } = require('../utils/apiResponse');
 const { mapContrato } = require('../utils/mapeadoresResposta');
+const { idMongoValido } = require('../utils/requisicaoUtils');
 const {
   notificarContratoNovo,
   notificarPropostaAceita,
@@ -13,11 +13,18 @@ const {
   notificarContratoCancelado
 } = require('../utils/notificacaoUtils');
 
-const STATUS_ATIVOS = ['pendente', 'proposta_pendente', 'proposta_aceita', 'em_andamento', 'concluido'];
-const STATUS_FINAIS = ['cancelado', 'encerrado'];
+const STATUS_ATIVOS = [
+  'pendente',
+  'proposta_pendente',
+  'proposta_aceita',
+  'em_andamento',
+  'entregue'
+];
+const STATUS_FINAIS = ['cancelado', 'concluido', 'encerrado'];
 
 function popularContrato(query) {
-  const camposUsuario = 'nome fotoPerfil tipoConta areaAtuacao tituloProfissional bio localizacao site linkedin github instagram avaliacaoMedia totalAvaliacoes';
+  const camposUsuario =
+    'nome fotoPerfil tipoConta areaAtuacao tituloProfissional bio localizacao site linkedin github instagram avaliacaoMedia totalAvaliacoes';
   return query
     .populate({
       path: 'servico',
@@ -60,6 +67,10 @@ async function obterNomeServico(contrato) {
 // isso evita repetir a mesma checagem em aceitar, cancelar, iniciar e entregar.
 async function carregarContratoAutorizado(req, res) {
   const userId = usuarioDoToken(req);
+  if (!idMongoValido(req.params.id)) {
+    erro(res, 400, 'Identificador de contrato inválido.');
+    return null;
+  }
   const contrato = await Contrato.findById(req.params.id);
   if (!contrato) {
     erro(res, 404, 'Contrato não encontrado.');
@@ -95,15 +106,26 @@ exports.criar = async (req, res) => {
     const detalhesPedido = String(req.body.detalhesPedido || req.body.detalhes_pedido || '').trim();
     const prazoDesejado = String(req.body.prazoDesejado || req.body.prazo_desejado || '').trim();
     const referencias = String(req.body.referencias || '').trim();
-    const precoPropostoRaw = req.body.precoProposto ?? req.body.preco_proposto ?? req.body.valorProposto;
+    const precoPropostoRaw =
+      req.body.precoProposto ?? req.body.preco_proposto ?? req.body.valorProposto;
     const precoProposto = normalizarValor(precoPropostoRaw);
 
     if (!servicoId) return erro(res, 400, 'Serviço não informado.');
+    if (!idMongoValido(servicoId)) return erro(res, 400, 'Identificador de serviço inválido.');
+    if (
+      precoPropostoRaw !== undefined &&
+      precoPropostoRaw !== null &&
+      precoPropostoRaw !== '' &&
+      (!Number.isFinite(precoProposto) || precoProposto <= 0)
+    ) {
+      return erro(res, 400, 'O valor proposto deve ser um número maior que zero.');
+    }
     const servico = await Servico.findById(servicoId).populate('freelancer');
     if (!servico) return erro(res, 404, 'Serviço não encontrado.');
 
     const userId = usuarioDoToken(req);
-    if (String(servico.freelancer._id) === String(userId)) return erro(res, 400, 'Você não pode contratar o próprio serviço.');
+    if (String(servico.freelancer._id) === String(userId))
+      return erro(res, 400, 'Você não pode contratar o próprio serviço.');
 
     const tipoContratacao = servico.valorCombinar ? 'combinar' : 'fixo';
 
@@ -115,7 +137,11 @@ exports.criar = async (req, res) => {
       return erro(res, 400, 'Informe os detalhes do serviço antes de concluir a contratação.');
     }
 
-    const existente = await Contrato.findOne({ cliente: userId, servico: servico._id, status: { $in: STATUS_ATIVOS } });
+    const existente = await Contrato.findOne({
+      cliente: userId,
+      servico: servico._id,
+      status: { $in: STATUS_ATIVOS }
+    });
     if (existente) {
       return erro(res, 409, 'Você já possui uma contratação ativa para este serviço.');
     }
@@ -124,8 +150,8 @@ exports.criar = async (req, res) => {
       cliente: userId,
       freelancer: servico.freelancer._id,
       servico: servico._id,
-      preco: tipoContratacao === 'fixo' ? servico.preco : (precoProposto || null),
-      precoProposto: tipoContratacao === 'fixo' ? null : (precoProposto || null),
+      preco: tipoContratacao === 'fixo' ? servico.preco : precoProposto || null,
+      precoProposto: tipoContratacao === 'fixo' ? null : precoProposto || null,
       mensagem,
       detalhesPedido,
       prazoDesejado,
@@ -136,24 +162,54 @@ exports.criar = async (req, res) => {
 
     const completo = await popularContrato(Contrato.findById(contrato._id));
     // notifica o freelancer da nova contratação/proposta em background.
-    notificarContratoNovo(servico.freelancer._id, contrato._id, servico.nome, tipoContratacao).catch(() => {});
-    return sucesso(res, 201, tipoContratacao === 'fixo' ? 'Contratação criada com sucesso.' : 'Proposta enviada com sucesso.', mapContrato(req, completo, userId));
-  } catch (error) { console.error(error); return erro(res, 500, 'Erro ao criar contratação.'); }
+    notificarContratoNovo(
+      servico.freelancer._id,
+      contrato._id,
+      servico.nome,
+      tipoContratacao
+    ).catch(() => {});
+    return sucesso(
+      res,
+      201,
+      tipoContratacao === 'fixo'
+        ? 'Contratação criada com sucesso.'
+        : 'Proposta enviada com sucesso.',
+      mapContrato(req, completo, userId)
+    );
+  } catch (error) {
+    console.error(error);
+    return erro(res, 500, 'Erro ao criar contratação.');
+  }
 };
 
 exports.meus = async (req, res) => {
   try {
     const userId = usuarioDoToken(req);
-    const contratos = await popularContrato(Contrato.find({ $or: [{ cliente: userId }, { freelancer: userId }] }).sort({ createdAt: -1 })).lean();
-    const avaliacoes = await Avaliacao.find({ autor: userId, contrato: { $in: contratos.map(c => c._id) } }).select('contrato').lean();
+    const contratos = await popularContrato(
+      Contrato.find({ $or: [{ cliente: userId }, { freelancer: userId }] }).sort({ createdAt: -1 })
+    ).lean();
+    const avaliacoes = await Avaliacao.find({
+      autor: userId,
+      contrato: { $in: contratos.map((c) => c._id) }
+    })
+      .select('contrato')
+      .lean();
 
-    const contratosAvaliados = new Set(avaliacoes.map(a => String(a.contrato)));
-    return sucesso(res, 200, 'Contratos carregados com sucesso.', contratos.map(c => ({
-      ...mapContrato(req, c, userId),
-      jaAvaliado: contratosAvaliados.has(String(c._id)),
-      ja_avaliado: contratosAvaliados.has(String(c._id))
-    })));
-  } catch (error) { console.error(error); return erro(res, 500, 'Erro ao buscar contratos.'); }
+    const contratosAvaliados = new Set(avaliacoes.map((a) => String(a.contrato)));
+    return sucesso(
+      res,
+      200,
+      'Contratos carregados com sucesso.',
+      contratos.map((c) => ({
+        ...mapContrato(req, c, userId),
+        jaAvaliado: contratosAvaliados.has(String(c._id)),
+        ja_avaliado: contratosAvaliados.has(String(c._id))
+      }))
+    );
+  } catch (error) {
+    console.error(error);
+    return erro(res, 500, 'Erro ao buscar contratos.');
+  }
 };
 
 // ação do freelancer: aceita proposta ou inicia contrato fixo.
@@ -163,16 +219,27 @@ exports.aceitar = async (req, res) => {
     const dados = await carregarContratoAutorizado(req, res);
     if (!dados) return;
     const { contrato, userId } = dados;
-    if (!ehFreelancer(contrato, userId)) return erro(res, 403, 'Somente o freelancer pode aceitar a proposta.');
-    if (!['proposta_pendente', 'pendente'].includes(contrato.status)) return erro(res, 400, 'Este contrato não está aguardando aceite.');
+    if (!ehFreelancer(contrato, userId))
+      return erro(res, 403, 'Somente o freelancer pode aceitar a proposta.');
+    if (!['proposta_pendente', 'pendente'].includes(contrato.status))
+      return erro(res, 400, 'Este contrato não está aguardando início.');
     contrato.status = contrato.tipoContratacao === 'fixo' ? 'em_andamento' : 'proposta_aceita';
     const nomeServico = await obterNomeServico(contrato);
     // fixo = freelancer aceitou e já vai iniciar; notifica como trabalho iniciado.
     // negociável = proposta aceita, mas ainda não iniciou.
-    const notificarAceite = contrato.tipoContratacao === 'fixo' ? notificarTrabalhoIniciado : notificarPropostaAceita;
+    const notificarAceite =
+      contrato.tipoContratacao === 'fixo' ? notificarTrabalhoIniciado : notificarPropostaAceita;
     notificarAceite(contrato.cliente, contrato._id, nomeServico).catch(() => {});
-    return salvarERetornar(req, res, contrato, contrato.tipoContratacao === 'fixo' ? 'Contrato iniciado.' : 'Proposta aceita.');
-  } catch (error) { console.error(error); return erro(res, 500, 'Erro ao aceitar contrato.'); }
+    return salvarERetornar(
+      req,
+      res,
+      contrato,
+      contrato.tipoContratacao === 'fixo' ? 'Contrato iniciado.' : 'Proposta aceita.'
+    );
+  } catch (error) {
+    console.error(error);
+    return erro(res, 500, 'Erro ao aceitar contrato.');
+  }
 };
 
 exports.recusar = async (req, res) => {
@@ -180,13 +247,18 @@ exports.recusar = async (req, res) => {
     const dados = await carregarContratoAutorizado(req, res);
     if (!dados) return;
     const { contrato, userId } = dados;
-    if (!ehFreelancer(contrato, userId)) return erro(res, 403, 'Somente o freelancer pode recusar a proposta.');
-    if (!['proposta_pendente', 'pendente'].includes(contrato.status)) return erro(res, 400, 'Este contrato não pode ser recusado agora.');
+    if (!ehFreelancer(contrato, userId))
+      return erro(res, 403, 'Somente o freelancer pode recusar a proposta.');
+    if (!['proposta_pendente', 'pendente'].includes(contrato.status))
+      return erro(res, 400, 'Este contrato não pode ser recusado agora.');
     contrato.status = 'cancelado';
     const nomeServico = await obterNomeServico(contrato);
     notificarPropostaRecusada(contrato.cliente, contrato._id, nomeServico).catch(() => {});
     return salvarERetornar(req, res, contrato, 'Proposta recusada.');
-  } catch (error) { console.error(error); return erro(res, 500, 'Erro ao recusar contrato.'); }
+  } catch (error) {
+    console.error(error);
+    return erro(res, 500, 'Erro ao recusar contrato.');
+  }
 };
 
 exports.iniciar = async (req, res) => {
@@ -194,13 +266,18 @@ exports.iniciar = async (req, res) => {
     const dados = await carregarContratoAutorizado(req, res);
     if (!dados) return;
     const { contrato, userId } = dados;
-    if (!ehFreelancer(contrato, userId)) return erro(res, 403, 'Somente o freelancer pode iniciar o trabalho.');
-    if (!['pendente', 'proposta_aceita'].includes(contrato.status)) return erro(res, 400, 'Este contrato não pode ser iniciado agora.');
+    if (!ehFreelancer(contrato, userId))
+      return erro(res, 403, 'Somente o freelancer pode iniciar o trabalho.');
+    if (!['pendente', 'proposta_aceita'].includes(contrato.status))
+      return erro(res, 400, 'Este contrato não pode ser iniciado agora.');
     contrato.status = 'em_andamento';
     const nomeServico = await obterNomeServico(contrato);
     notificarTrabalhoIniciado(contrato.cliente, contrato._id, nomeServico).catch(() => {});
     return salvarERetornar(req, res, contrato, 'Trabalho iniciado.');
-  } catch (error) { console.error(error); return erro(res, 500, 'Erro ao iniciar contrato.'); }
+  } catch (error) {
+    console.error(error);
+    return erro(res, 500, 'Erro ao iniciar contrato.');
+  }
 };
 
 exports.entregar = async (req, res) => {
@@ -208,13 +285,40 @@ exports.entregar = async (req, res) => {
     const dados = await carregarContratoAutorizado(req, res);
     if (!dados) return;
     const { contrato, userId } = dados;
-    if (!ehFreelancer(contrato, userId)) return erro(res, 403, 'Somente o freelancer pode finalizar a entrega.');
-    if (!['proposta_aceita', 'em_andamento'].includes(contrato.status)) return erro(res, 400, 'Este contrato não pode ser finalizado agora.');
-    contrato.status = 'concluido';
+    if (!ehFreelancer(contrato, userId))
+      return erro(res, 403, 'Somente o freelancer pode finalizar a entrega.');
+    if (!['proposta_aceita', 'em_andamento'].includes(contrato.status))
+      return erro(res, 400, 'Este contrato não pode ser finalizado agora.');
+    contrato.status = 'entregue';
     const nomeServico = await obterNomeServico(contrato);
     notificarEntregaRealizada(contrato.cliente, contrato._id, nomeServico).catch(() => {});
-    return salvarERetornar(req, res, contrato, 'Entrega marcada como concluída.');
-  } catch (error) { console.error(error); return erro(res, 500, 'Erro ao finalizar entrega.'); }
+    return salvarERetornar(
+      req,
+      res,
+      contrato,
+      'Entrega enviada. Aguardando confirmação do cliente.'
+    );
+  } catch (error) {
+    console.error(error);
+    return erro(res, 500, 'Erro ao finalizar entrega.');
+  }
+};
+
+exports.confirmarEntrega = async (req, res) => {
+  try {
+    const dados = await carregarContratoAutorizado(req, res);
+    if (!dados) return;
+    const { contrato, userId } = dados;
+    if (!ehCliente(contrato, userId))
+      return erro(res, 403, 'Somente o cliente pode confirmar a entrega.');
+    if (contrato.status !== 'entregue')
+      return erro(res, 400, 'Este contrato não possui uma entrega aguardando confirmação.');
+    contrato.status = 'concluido';
+    return salvarERetornar(req, res, contrato, 'Entrega confirmada. Contrato concluído.');
+  } catch (error) {
+    console.error(error);
+    return erro(res, 500, 'Erro ao confirmar entrega.');
+  }
 };
 
 exports.cancelar = async (req, res) => {
@@ -222,18 +326,30 @@ exports.cancelar = async (req, res) => {
     const dados = await carregarContratoAutorizado(req, res);
     if (!dados) return;
     const { contrato, userId } = dados;
-    const clientePodeCancelar = ehCliente(contrato, userId) && ['pendente', 'proposta_pendente', 'proposta_aceita'].includes(contrato.status);
-    const freelancerPodeCancelar = ehFreelancer(contrato, userId) && ['pendente', 'proposta_pendente', 'proposta_aceita', 'em_andamento'].includes(contrato.status);
-    if (!clientePodeCancelar && !freelancerPodeCancelar) return erro(res, 403, 'Este contrato não pode ser cancelado por você neste momento.');
+    const clientePodeCancelar =
+      ehCliente(contrato, userId) &&
+      ['pendente', 'proposta_pendente', 'proposta_aceita'].includes(contrato.status);
+    const freelancerPodeCancelar =
+      ehFreelancer(contrato, userId) &&
+      ['pendente', 'proposta_pendente', 'proposta_aceita', 'em_andamento'].includes(
+        contrato.status
+      );
+    if (!clientePodeCancelar && !freelancerPodeCancelar)
+      return erro(res, 403, 'Este contrato não pode ser cancelado por você neste momento.');
     contrato.status = 'cancelado';
     // notifica a outra parte do cancelamento.
     const nomeServico = await obterNomeServico(contrato);
     const ehCli = ehCliente(contrato, userId);
     const destinatario = ehCli ? contrato.freelancer : contrato.cliente;
     const quemCancelou = ehCli ? 'O contratante' : 'O freelancer';
-    notificarContratoCancelado(destinatario, contrato._id, nomeServico, quemCancelou).catch(() => {});
+    notificarContratoCancelado(destinatario, contrato._id, nomeServico, quemCancelou).catch(
+      () => {}
+    );
     return salvarERetornar(req, res, contrato, 'Contrato cancelado.');
-  } catch (error) { console.error(error); return erro(res, 500, 'Erro ao cancelar contrato.'); }
+  } catch (error) {
+    console.error(error);
+    return erro(res, 500, 'Erro ao cancelar contrato.');
+  }
 };
 
 // compatibilidade com o front antigo: transforma patch /status em ações seguras sem recarregar o contrato duas vezes.
@@ -250,20 +366,40 @@ exports.atualizarStatus = async (req, res) => {
     const nomeServico = await obterNomeServico(contrato);
 
     if (status === 'cancelado') {
-      const clientePodeCancelar = ehCliente(contrato, userId) && ['pendente', 'proposta_pendente', 'proposta_aceita'].includes(contrato.status);
-      const freelancerPodeCancelar = ehFreelancer(contrato, userId) && ['pendente', 'proposta_pendente', 'proposta_aceita', 'em_andamento'].includes(contrato.status);
+      const clientePodeCancelar =
+        ehCliente(contrato, userId) &&
+        ['pendente', 'proposta_pendente', 'proposta_aceita'].includes(contrato.status);
+      const freelancerPodeCancelar =
+        ehFreelancer(contrato, userId) &&
+        ['pendente', 'proposta_pendente', 'proposta_aceita', 'em_andamento'].includes(
+          contrato.status
+        );
       if (!clientePodeCancelar && !freelancerPodeCancelar) {
         return erro(res, 403, 'Este contrato não pode ser cancelado por você neste momento.');
       }
       contrato.status = 'cancelado';
       const ehCli = ehCliente(contrato, userId);
       const destinatario = ehCli ? contrato.freelancer : contrato.cliente;
-      notificarContratoCancelado(destinatario, contrato._id, nomeServico, ehCli ? 'O contratante' : 'O freelancer').catch(() => {});
+      notificarContratoCancelado(
+        destinatario,
+        contrato._id,
+        nomeServico,
+        ehCli ? 'O contratante' : 'O freelancer'
+      ).catch(() => {});
       return salvarERetornar(req, res, contrato, 'Contrato cancelado.');
     }
 
-    if (ehCliente(contrato, userId) && ['em_andamento', 'proposta_aceita', 'concluido'].includes(status)) {
+    if (ehCliente(contrato, userId) && ['em_andamento', 'proposta_aceita'].includes(status)) {
       return erro(res, 403, 'Somente o freelancer pode dar andamento ou finalizar a entrega.');
+    }
+
+    if (status === 'concluido') {
+      if (!ehCliente(contrato, userId))
+        return erro(res, 403, 'Somente o cliente pode confirmar a entrega.');
+      if (contrato.status !== 'entregue')
+        return erro(res, 400, 'A entrega ainda não está aguardando confirmação.');
+      contrato.status = 'concluido';
+      return salvarERetornar(req, res, contrato, 'Entrega confirmada. Contrato concluído.');
     }
 
     if (!ehFreelancer(contrato, userId)) {
@@ -293,16 +429,6 @@ exports.atualizarStatus = async (req, res) => {
       contrato.status = 'em_andamento';
       notificarTrabalhoIniciado(contrato.cliente, contrato._id, nomeServico).catch(() => {});
       return salvarERetornar(req, res, contrato, 'Contrato iniciado.');
-    }
-
-    if (status === 'concluido') {
-      if (!['em_andamento', 'proposta_aceita'].includes(contrato.status)) {
-        return erro(res, 400, 'Este contrato ainda não pode ser marcado como concluído.');
-      }
-
-      contrato.status = 'concluido';
-      notificarEntregaRealizada(contrato.cliente, contrato._id, nomeServico).catch(() => {});
-      return salvarERetornar(req, res, contrato, 'Entrega marcada como concluída.');
     }
 
     return erro(res, 400, 'Status inválido.');
