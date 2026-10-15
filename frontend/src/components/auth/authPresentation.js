@@ -20,7 +20,20 @@ const alertTones = {
 };
 
 // danger: irreversible confirmations get a red action and start focused on Cancel.
-export function showAuthAlert({ icon = 'info', symbol, title, text, confirmText = 'OK', cancelText, danger = false }) {
+// html: trusted static markup only. password: asks for a password before confirming.
+// onConfirm(value): runs inside the modal; returning a message keeps it open and shows the message.
+export function showAuthAlert({
+  icon = 'info',
+  symbol,
+  title,
+  text,
+  html,
+  confirmText = 'OK',
+  cancelText,
+  danger = false,
+  password,
+  onConfirm
+}) {
   const dark = localStorage.getItem('darkMode') === 'enabled';
   const opener = document.activeElement;
   const tone = alertTones[icon] || alertTones.info;
@@ -28,13 +41,38 @@ export function showAuthAlert({ icon = 'info', symbol, title, text, confirmText 
     icon,
     iconHtml: `<i aria-hidden="true" class="fas ${symbol || tone.symbol}"></i>`,
     title,
-    text,
+    ...(html ? { html } : { text }),
+    ...(password
+      ? {
+          input: 'password',
+          inputLabel: password.label,
+          inputPlaceholder: password.placeholder || '',
+          inputAttributes: { autocomplete: 'current-password', 'aria-label': password.label },
+          inputValidator: (value) => (!value ? password.required || 'Informe sua senha.' : undefined)
+        }
+      : {}),
+    ...(onConfirm
+      ? {
+          showLoaderOnConfirm: true,
+          allowOutsideClick: () => !Swal.isLoading(),
+          preConfirm: async (value) => {
+            const problem = await onConfirm(value);
+            if (problem) {
+              Swal.showValidationMessage(problem);
+              return false;
+            }
+            return value ?? true;
+          }
+        }
+      : {}),
     confirmButtonText: confirmText,
     showCancelButton: Boolean(cancelText),
     cancelButtonText: cancelText,
     reverseButtons: true,
+    // irreversible prompts start on Cancel even when they carry an input field.
+    ...(danger && cancelText ? { didOpen: () => Swal.getCancelButton()?.focus() } : {}),
     focusCancel: Boolean(cancelText) && (danger || icon === 'warning'),
-    allowOutsideClick: true,
+    ...(onConfirm ? {} : { allowOutsideClick: true }),
     heightAuto: false,
     buttonsStyling: false,
     returnFocus: false,
@@ -48,6 +86,9 @@ export function showAuthAlert({ icon = 'info', symbol, title, text, confirmText 
       title: `m-0! mb-2! p-0! font-workly-display! text-[1.5rem]! leading-[1.15]! font-semibold! tracking-[-0.02em]! [font-variation-settings:'opsz'_48]! ${dark ? 'text-[#ecebe5]!' : 'text-[#16211b]!'}`,
       htmlContainer: `m-0! mx-auto! mb-7! max-w-[320px]! p-0! font-workly! text-[0.95rem]! leading-[1.55]! font-normal! ${dark ? 'text-[#a3ada7]!' : 'text-[#5e6862]!'}`,
       actions: 'm-0! w-full! flex-nowrap! gap-2.5! legacy-max-480:flex-col-reverse!',
+      inputLabel: `m-0! mb-2! block! w-full! text-left! text-sm! font-medium! ${dark ? 'text-[#ecebe5]!' : 'text-[#16211b]!'}`,
+      input: `m-0! mb-5! h-11! w-full! rounded-md! border! px-3.5! text-[0.95rem]! shadow-none! focus:shadow-[0_0_0_3px_rgba(14,59,44,0.14)]! ${dark ? 'border-white/15! bg-[#0c1411]! text-[#ecebe5]! focus:border-[#4ade80]!' : 'border-[#ddd8cc]! bg-[#f5f3ee]! text-[#16211b]! focus:border-[#0e3b2c]!'}`,
+      validationMessage: `m-0! mb-5! justify-start! rounded-md! px-3! py-2! text-left! text-sm! ${dark ? 'bg-[#fda4af]/12! text-[#fda4af]!' : 'bg-[#fde8e8]! text-[#9b1c1c]!'}`,
       cancelButton: `m-0! min-h-11 flex-1 rounded-md border px-5 font-workly text-[0.95rem] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#037a3a] legacy-max-480:w-full ${dark ? 'border-white/15 bg-transparent text-[#ecebe5] hover:bg-white/5' : 'border-[#ddd8cc] bg-[#ffffff] text-[#16211b] hover:bg-[#f5f3ee]'}`,
       confirmButton: `m-0! min-h-11 flex-1 rounded-md border-0 px-5 font-workly text-[0.95rem] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#037a3a] legacy-max-480:w-full ${danger ? (dark ? 'bg-[#fda4af] text-[#0c1411] hover:bg-[#fecdd3]' : 'bg-[#b42318] text-[#ffffff] hover:bg-[#912018]') : dark ? 'bg-[#4ade80] text-[#0c1411] hover:bg-[#6ee7a0]' : 'bg-[#0e3b2c] text-[#f3f1ea] hover:bg-[#1d5a43]'}`
     }

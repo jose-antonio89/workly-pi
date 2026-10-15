@@ -2,11 +2,38 @@ const app = require('./app');
 const connectDatabase = require('./config/db');
 const ambiente = require('./config/ambiente');
 const { popularBancoDemo } = require('./seed');
+const { garantirIndicesContrato, relatarProblemaIndice } = require('./models/Contrato');
+const { recuperarExclusoesPendentes } = require('./services/contaService');
+
+const INTERVALO_RECUPERACAO_MS = 10 * 60 * 1000;
+
+// retoma exclusões de conta interrompidas por queda do processo. Falhas só vão para o log.
+async function recuperarExclusoes() {
+  try {
+    const { exclusoesConcluidas, contratosCancelados } = await recuperarExclusoesPendentes();
+    if (exclusoesConcluidas || contratosCancelados) {
+      console.log(`Recuperação de exclusões: ${exclusoesConcluidas} concluída(s), ${contratosCancelados} contrato(s) cancelado(s).`);
+    }
+  } catch (error) {
+    console.error('Falha ao recuperar exclusões de conta pendentes:', error?.message || error);
+  }
+}
+
+// instala e verifica índices críticos sem depender do autoIndex. Sem o índice único a API continua
+// no ar para consultas, mas recusa novos pedidos e propostas (503) até a proteção ser restabelecida.
+async function prepararIndices() {
+  const resultado = await garantirIndicesContrato();
+  if (resultado.instalado) console.log('Proteção contra contratos duplicados ativa.');
+  else relatarProblemaIndice(resultado);
+}
 
 // ponto de partida do backend: conecta no mongo, prepara os dados demo se estiver ligado e sobe a api
 (async () => {
   try {
     await connectDatabase();
+    await prepararIndices();
+    await recuperarExclusoes();
+    setInterval(recuperarExclusoes, INTERVALO_RECUPERACAO_MS).unref();
 
     if (ambiente.autoSeed) {
       // banco já começa com categorias/serviços de exemplo.

@@ -2,6 +2,7 @@ const Notificacao = require('../models/Notificacao');
 const Mensagem = require('../models/Mensagem');
 const Contrato = require('../models/Contrato');
 const { sucesso, erro } = require('../utils/apiResponse');
+const { idMongoValido } = require('../utils/requisicaoUtils');
 
 function usuarioId(req) {
   return req.user.id_usuario || req.user.idUsuario;
@@ -98,6 +99,7 @@ exports.contarNaoLidas = async (req, res) => {
 exports.marcarLida = async (req, res) => {
   try {
     const userId = usuarioId(req);
+    if (!idMongoValido(req.params.id)) return erro(res, 400, 'Identificador de notificação inválido.');
     const notificacao = await Notificacao.findOneAndUpdate(
       { _id: req.params.id, destinatario: userId },
       { lida: true },
@@ -126,11 +128,17 @@ exports.marcarContextoLidas = async (req, res) => {
   try {
     const userId = usuarioId(req);
     const contexto = normalizarContexto(req.body.contexto || req.query.contexto);
-    const referenciaId = req.body.referenciaId || req.query.referenciaId || null;
+    const referenciaBruta = req.body?.referenciaId ?? req.query.referenciaId ?? null;
 
     if (!contexto) {
       return erro(res, 400, 'Contexto inválido para limpar notificações.');
     }
+
+    // só aceita um id escalar; objetos ou arrays seriam interpretados como operadores do MongoDB.
+    if (referenciaBruta !== null && referenciaBruta !== '' && !idMongoValido(referenciaBruta)) {
+      return erro(res, 400, 'Referência inválida.');
+    }
+    const referenciaId = referenciaBruta || null;
 
     let notificacoesAtualizadas = 0;
     let mensagensAtualizadas = 0;
@@ -160,14 +168,17 @@ exports.marcarContextoLidas = async (req, res) => {
       const resultadoNotificacoes = await Notificacao.updateMany(filtroNotificacao, { lida: true });
       notificacoesAtualizadas = resultadoNotificacoes.modifiedCount || 0;
 
+      // mensagens só mudam dentro de contratos do usuário e quando foram recebidas por ele.
+      const contratoIds = await contratosDoUsuario(userId);
       if (referenciaId) {
-        const resultadoMensagem = await Mensagem.updateOne(
-          { _id: referenciaId, remetente: { $ne: userId }, lida: false },
-          { lida: true }
-        );
+        const resultadoMensagem = contratoIds.length
+          ? await Mensagem.updateOne(
+              { _id: referenciaId, contrato: { $in: contratoIds }, remetente: { $ne: userId }, lida: false },
+              { lida: true }
+            )
+          : { modifiedCount: 0 };
         mensagensAtualizadas = resultadoMensagem.modifiedCount || 0;
       } else {
-        const contratoIds = await contratosDoUsuario(userId);
         if (contratoIds.length) {
           const resultadoMensagens = await Mensagem.updateMany(
             { contrato: { $in: contratoIds }, remetente: { $ne: userId }, lida: false },
@@ -219,6 +230,7 @@ exports.marcarTodasLidas = async (req, res) => {
 // remove uma notificação específica do usuário.
 exports.remover = async (req, res) => {
   try {
+    if (!idMongoValido(req.params.id)) return erro(res, 400, 'Identificador de notificação inválido.');
     const notificacao = await Notificacao.findOneAndDelete({
       _id: req.params.id,
       destinatario: usuarioId(req)

@@ -102,7 +102,7 @@ exports.criar = async (req, res) => {
     console.error(error);
     if (req.file && !criacaoConcluida)
       removerArquivoSeExistir(`/uploads/servicos/${req.file.filename}`);
-    return erro(res, 500, error.message || 'Erro ao criar o serviço.');
+    return erro(res, 500, 'Erro ao criar o serviço.');
   }
 };
 
@@ -192,7 +192,7 @@ exports.atualizar = async (req, res) => {
     console.error(error);
     if (req.file && !atualizacaoConcluida)
       removerArquivoSeExistir(`/uploads/servicos/${req.file.filename}`);
-    return erro(res, 500, error.message || 'Erro ao atualizar serviço.');
+    return erro(res, 500, 'Erro ao atualizar serviço.');
   }
 };
 
@@ -200,12 +200,10 @@ exports.remover = async (req, res) => {
   try {
     const servico = await carregarServicoDoFreelancer(req, res);
     if (!servico) return;
-    const imagemAnterior = servico.imagemServico;
     const resultado = await servicoService.remover(servico);
     if (resultado.contratosAtivos)
       return erro(res, 400, 'Não é possível remover um serviço com contratos ativos.');
-    if (imagemAnterior && !String(imagemAnterior).includes('servico_padrao.svg'))
-      removerArquivoSeExistir(imagemAnterior);
+    // a imagem fica: contratos e avaliações antigos ainda exibem o serviço retirado.
     return sucesso(res, 200, 'Serviço removido com sucesso.', { idServico: req.params.id });
   } catch (error) {
     console.error(error);

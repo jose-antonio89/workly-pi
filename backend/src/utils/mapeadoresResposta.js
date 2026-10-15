@@ -96,7 +96,7 @@ function mapUsuario(req, usuario) {
 
 // perfil público: usado quando outro usuário aparece em serviços, contratos e avaliações.
 function mapUsuarioPublico(req, usuario) {
-  return removerDadosSensiveis(montarBaseUsuario(req, usuario));
+  return { ...removerDadosSensiveis(montarBaseUsuario(req, usuario)), removido: Boolean(usuario?.removido) };
 }
 
 const mapUsuarioPrivado = mapUsuario;
@@ -163,6 +163,8 @@ function mapContrato(req, contrato, usuarioAtualId = null) {
     idContrato: contrato._id.toString(),
     idServico: servico._id ? servico._id.toString() : '',
     nomeServico: servico.nome || 'Serviço removido',
+    // false quando o serviço foi retirado do catálogo ou não existe mais: o histórico continua, a página pública não.
+    servicoDisponivel: Boolean(servico._id) && !servico.removido,
     descricaoServico: servico.descricao || '',
     imagemServico: montarUrlImagem(
       req,

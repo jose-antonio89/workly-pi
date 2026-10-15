@@ -40,6 +40,17 @@ const usuarioSchema = new mongoose.Schema(
     notificacoesEmail: { type: Boolean, default: true },
     notificacoesPropostas: { type: Boolean, default: true },
     notificacoesMarketing: { type: Boolean, default: false },
+    // incrementada ao trocar a senha: tokens emitidos com versão anterior deixam de valer.
+    // usuários antigos sem o campo contam como versão 0, assim os tokens atuais continuam válidos.
+    versaoSessao: { type: Number, default: 0, min: 0 },
+    // exclusão de conta é uma anonimização: o registro fica para o histórico da outra parte.
+    // documentos antigos sem estes campos contam como contas ativas.
+    removido: { type: Boolean, default: false },
+    removidoEm: { type: Date, default: null },
+    // fase 1 da exclusão: verificação de contratos ativos (expira se o processo cair).
+    removendoDesde: { type: Date, default: null },
+    // fase 2: exclusão confirmada, sem volta. A conta fica encerrada até a anonimização terminar.
+    exclusaoConfirmadaEm: { type: Date, default: null },
     avaliacaoMedia: { type: Number, default: 0 },
     totalAvaliacoes: { type: Number, default: 0 }
   },

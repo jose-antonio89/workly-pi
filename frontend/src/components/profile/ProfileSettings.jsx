@@ -242,43 +242,49 @@ export default function ProfileSettings({ user, reload, onPhoto }) {
       setBusy(false);
     }
   }
+  // Account removal anonymises the profile; finished contracts, reviews and messages stay for the other party.
+  const removalDetails = `
+    <div style="text-align:left">
+      <p style="margin:0 0 10px"><strong>Será removido:</strong> nome, e-mail, CPF, telefone, foto, dados de pagamento, links e seus serviços publicados.</p>
+      <p style="margin:0 0 10px"><strong>Fica no histórico da outra parte:</strong> contratos concluídos ou cancelados, avaliações e mensagens, exibidos como “Usuário removido”.</p>
+      <p style="margin:0">Contratos em andamento precisam ser concluídos ou cancelados antes. Esta ação não pode ser desfeita.</p>
+    </div>`;
   async function remove(event) {
     event.preventDefault();
-    if (
-      !(
-        await showAuthAlert({
-          icon: 'warning',
-          title: 'Excluir conta?',
-          text: 'Tem certeza que deseja excluir sua conta? Esta ação é irreversível.',
-          confirmText: 'Excluir',
-          cancelText: 'Cancelar',
-          danger: true
-        })
-      ).isConfirmed
-    )
-      return;
     setBusy(true);
     try {
-      const result = await deleteAccount();
+      const result = await showAuthAlert({
+        icon: 'warning',
+        title: 'Excluir conta?',
+        html: removalDetails,
+        password: { label: 'Confirme com sua senha atual', required: 'Informe sua senha atual.' },
+        confirmText: 'Excluir conta',
+        cancelText: 'Cancelar',
+        danger: true,
+        onConfirm: async (senha) => {
+          try {
+            await deleteAccount(senha);
+            return undefined;
+          } catch (error) {
+            return error.message || 'Não foi possível excluir sua conta.';
+          }
+        }
+      });
+      if (!result.isConfirmed) return;
+      limparSessao();
       await showAuthAlert({
         icon: 'success',
+        symbol: 'fa-user-slash',
         title: 'Conta excluída',
-        text: result.mensagem || 'Sua conta foi excluída com sucesso.',
+        text: 'Sua conta foi removida e você saiu de todos os dispositivos.',
         confirmText: 'OK'
       });
-      limparSessao();
       location.assign('/');
-    } catch (error) {
-      await showAuthAlert({
-        icon: 'error',
-        title: 'Erro ao excluir conta',
-        text: error.message || 'Não foi possível excluir sua conta.',
-        confirmText: 'Fechar'
-      });
     } finally {
       setBusy(false);
     }
   }
+
   function actions(label, section) {
     return (
       <div className="mt-8 flex flex-wrap items-center justify-end gap-3 border-t border-workly-rule pt-6">

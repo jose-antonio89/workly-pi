@@ -67,6 +67,8 @@ export default function ContractsPage() {
       await load();
     } catch (error) {
       toast(error.message);
+      // another action changed this contract first: show the current state instead of the stale card.
+      if ([400, 403, 409].includes(error.status)) await load();
     }
   }
   async function review(payload) {

@@ -28,13 +28,19 @@ async function mutate(path, method, data) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   });
-  if (response.user) salvarSessao({ user: response.user });
+  // password changes revoke older tokens and return a fresh one for this session.
+  if (response.token || response.user) salvarSessao({ token: response.token, user: response.user });
   return response;
 }
 export const updateProfile = (data) => mutate('/api/usuarios/perfil', 'PUT', data);
 export const updateAccountType = (data) => mutate('/api/usuarios/tipo-conta', 'PATCH', data);
 export const updatePassword = (data) => mutate('/api/usuarios/perfil/senha', 'PUT', data);
-export const deleteAccount = () => apiRequest('/api/usuarios/perfil', { method: 'DELETE' });
+export const deleteAccount = (senhaAtual) =>
+  apiRequest('/api/usuarios/perfil', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ senhaAtual })
+  });
 export async function uploadPhoto(blob) {
   const body = new FormData();
   body.append('nova_foto', blob, 'foto-perfil.webp');

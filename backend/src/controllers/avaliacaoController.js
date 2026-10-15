@@ -36,7 +36,9 @@ exports.criar = async (req, res) => {
       return erro(res, 400, 'As notas devem ser números entre 1 e 5.');
     }
 
-    const contrato = await Contrato.findById(contratoId).populate('servico').populate('freelancer');
+    // usa as referências gravadas no contrato: a avaliação continua possível mesmo se o serviço
+    // foi retirado ou se o documento não existe mais (exclusões antigas).
+    const contrato = await Contrato.findById(contratoId);
     if (!contrato) return erro(res, 404, 'Contrato não encontrado.');
     if (String(contrato.cliente) !== String(userId))
       return erro(res, 403, 'Apenas o contratante pode avaliar.');
@@ -49,28 +51,25 @@ exports.criar = async (req, res) => {
     const avaliacaoCriada = await Avaliacao.create({
       autor: userId,
       contrato: contrato._id,
-      freelancer: contrato.freelancer._id,
-      servico: contrato.servico._id,
+      freelancer: contrato.freelancer,
+      servico: contrato.servico,
       notaServico: notaServicoNumerica,
       notaFreelancer: notaFreelancerNumerica,
       comentario: String(comentario || '').trim()
     });
 
-    // Mantém o contrato como concluído após a avaliação.
-    // Antes o sistema mudava para 'encerrado', mas esse segundo status final confundia a apresentação.
-    contrato.status = 'concluido';
-    await contrato.save();
+    // o contrato continua "concluido" após a avaliação; não há segunda gravação de status aqui.
 
     const avaliacao = await Avaliacao.findById(avaliacaoCriada._id)
       .populate('autor')
       .populate('freelancer')
       .populate({ path: 'servico', populate: [{ path: 'categoria' }, { path: 'freelancer' }] });
 
-    await recalcularFreelancer(contrato.freelancer._id);
+    await recalcularFreelancer(contrato.freelancer);
     // notifica o freelancer da nova avaliação.
     const nomeCliente = avaliacao.autor?.nome || 'O contratante';
     notificarAvaliacaoRecebida(
-      contrato.freelancer._id,
+      contrato.freelancer,
       avaliacaoCriada._id,
       nomeCliente,
       Number(notaFreelancer)

@@ -159,7 +159,7 @@ export default function ContractCard({ contract: c, onAction, onReview }) {
             Chat
           </Link>
         )}
-        {c.idServico && (
+        {c.idServico && c.servicoDisponivel !== false && (
           <Link to={`/detalhe-servico?id=${c.idServico}`} className="inline-flex min-h-10 items-center gap-2 rounded-md px-2.5 text-sm font-medium transition-colors text-workly-ink-warm hover:bg-workly-sunken">
             Ver serviço
           </Link>

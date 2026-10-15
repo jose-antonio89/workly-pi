@@ -134,7 +134,7 @@ export default function ContractDetails({ contract: c, onClose }) {
             ))}
           </dl>
           <div className="mt-[18px] flex flex-wrap gap-2.5">
-            {c.idServico && (
+            {c.idServico && c.servicoDisponivel !== false && (
               <ModuleButton to={`/detalhe-servico?id=${c.idServico}`} tone="secondary">
                 <i aria-hidden="true" className="fas fa-eye" />
                 Ver serviço

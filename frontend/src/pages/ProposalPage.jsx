@@ -81,6 +81,19 @@ export default function ProposalPage() {
       // Fields are uncontrolled and untouched, so the draft survives for a retry.
       sending.current = false;
       setBusy(false);
+      if (error.status === 409) {
+        // The server already holds an active order for this service: point to it instead of retrying.
+        const result = await showAuthAlert({
+          icon: 'warning',
+          symbol: 'fa-file-signature',
+          title: 'Você já tem uma proposta ativo',
+          text: error.message || 'Já existe uma contratação ativa para este serviço.',
+          confirmText: 'Ver contratos',
+          cancelText: 'Fechar'
+        });
+        if (result.isConfirmed) navigate('/contratos', { replace: true });
+        return;
+      }
       await showAuthAlert({
         icon: 'error',
         title: 'Proposta não enviada',

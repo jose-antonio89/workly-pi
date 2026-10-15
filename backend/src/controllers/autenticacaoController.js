@@ -1,7 +1,6 @@
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const Usuario = require('../models/Usuario');
-const ambiente = require('../config/ambiente');
+const { emitirToken } = require('../utils/tokenSessao');
 const { mapUsuario } = require('../utils/mapeadoresResposta');
 const { sucesso, erro } = require('../utils/apiResponse');
 const { obterCampo, normalizarTipoConta } = require('../utils/requisicaoUtils');
@@ -96,17 +95,15 @@ exports.entrar = async (req, res) => {
     }
 
     const usuario = await Usuario.findOne({ email: String(email).toLowerCase().trim() });
-    const senhaCorreta = usuario ? await bcrypt.compare(String(senha), usuario.senha) : false;
+    // contas removidas não têm credencial válida; a resposta é a mesma de credenciais erradas.
+    const ativo = usuario && !usuario.removido && !usuario.exclusaoConfirmadaEm;
+    const senhaCorreta = ativo ? await bcrypt.compare(String(senha), usuario.senha).catch(() => false) : false;
 
-    if (!usuario || !senhaCorreta) {
+    if (!ativo || !senhaCorreta) {
       return erro(res, 401, 'Credenciais inválidas.');
     }
 
-    const token = jwt.sign(
-      { id_usuario: usuario._id.toString(), nome: usuario.nome, tipo: usuario.tipoConta },
-      ambiente.jwtSecret,
-      { expiresIn: '7d' }
-    );
+    const token = emitirToken(usuario);
 
     return sucesso(res, 200, 'Login realizado com sucesso.', null, {
       token,

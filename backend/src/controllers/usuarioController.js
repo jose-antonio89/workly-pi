@@ -18,6 +18,12 @@ const {
   idMongoValido
 } = require('../utils/requisicaoUtils');
 const { removerArquivoSeExistir } = require('../utils/arquivoUtils');
+const { validarAtualizacaoPerfil } = require('../utils/validacaoPerfil');
+const { emitirToken } = require('../utils/tokenSessao');
+const { excluirConta } = require('../services/contaService');
+
+// serviços retirados não aparecem em perfis, dashboards nem contagens.
+const PUBLICADOS = { removido: { $ne: true } };
 
 function ehArquivoPadrao(caminho = '') {
   return (
@@ -147,7 +153,7 @@ async function montarDashboardPerfil(req, usuario, totalServicosPublicados = 0) 
     .sort({ createdAt: -1 })
     .limit(20);
 
-  const servicosPublicados = await Servico.find({ freelancer: usuarioId })
+  const servicosPublicados = await Servico.find({ freelancer: usuarioId, ...PUBLICADOS })
     .populate('categoria')
     .sort({ createdAt: -1 })
     .limit(20);
@@ -361,11 +367,11 @@ exports.buscarPerfil = async (req, res) => {
       distribuicao: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
     };
 
-    const totalServicosPublicados = await Servico.countDocuments({ freelancer: usuario._id });
+    const totalServicosPublicados = await Servico.countDocuments({ freelancer: usuario._id, ...PUBLICADOS });
     const perfilFreelancer = usuarioEhFreelancer(usuario, totalServicosPublicados);
 
     if (perfilFreelancer) {
-      const servicosDoUsuario = await Servico.find({ freelancer: usuario._id })
+      const servicosDoUsuario = await Servico.find({ freelancer: usuario._id, ...PUBLICADOS })
         .populate('categoria')
         .populate('freelancer')
         .sort({ createdAt: -1 });
@@ -443,9 +449,10 @@ exports.buscarPerfilPublico = async (req, res) => {
   try {
     if (!idMongoValido(req.params.id)) return erro(res, 400, 'Identificador de usuário inválido.');
     const usuario = await Usuario.findById(req.params.id);
-    if (!usuario) return erro(res, 404, 'Usuário não encontrado.');
+    if (!usuario || usuario.removido || usuario.exclusaoConfirmadaEm)
+      return erro(res, 404, 'Este perfil não está disponível.');
 
-    const servicosDoUsuario = await Servico.find({ freelancer: usuario._id })
+    const servicosDoUsuario = await Servico.find({ freelancer: usuario._id, ...PUBLICADOS })
       .populate('categoria')
       .populate('freelancer')
       .sort({ createdAt: -1 });
@@ -508,47 +515,15 @@ exports.buscarPerfilPublico = async (req, res) => {
 // tipo de conta não entra aqui porque muda permissões e tem rota própria.
 exports.atualizarPerfil = async (req, res) => {
   try {
-    const email = obterCampo(req.body, ['email']);
-    const nome = obterCampo(req.body, ['nome']);
+    const { campos, erro: mensagemInvalida } = validarAtualizacaoPerfil(req.body);
+    if (mensagemInvalida) return erro(res, 400, mensagemInvalida);
 
-    const camposPermitidos = {
-      nome,
-      email: email ? String(email).toLowerCase().trim() : undefined,
-      telefone: obterCampo(req.body, ['telefone']),
-      tituloProfissional: obterCampo(req.body, ['tituloProfissional', 'professional_title']),
-      bio: obterCampo(req.body, ['bio']),
-      localizacao: obterCampo(req.body, ['localizacao', 'location']),
-      site: obterCampo(req.body, ['site', 'website']),
-      linkedin: obterCampo(req.body, ['linkedin']),
-      github: obterCampo(req.body, ['github']),
-      instagram: obterCampo(req.body, ['instagram']),
-      areaAtuacao: obterCampo(req.body, ['areaAtuacao', 'area_atuacao']),
-      portfolioTitulo: obterCampo(req.body, ['portfolioTitulo', 'portfolio_titulo']),
-      portfolioDescricao: obterCampo(req.body, ['portfolioDescricao', 'portfolio_descricao']),
-      portfolioUrl: obterCampo(req.body, ['portfolioUrl', 'portfolio_url']),
-      disponibilidade: obterCampo(req.body, ['disponibilidade']),
-      precoHora: obterCampo(req.body, ['precoHora', 'preco_hora']),
-      metodoPagamento: obterCampo(req.body, ['metodoPagamento', 'metodo_pagamento']),
-      chavePix: obterCampo(req.body, ['chavePix', 'chave_pix']),
-      banco: obterCampo(req.body, ['banco']),
-      notificacoesEmail: obterCampo(req.body, ['notificacoesEmail', 'notificacoes_email']),
-      notificacoesPropostas: obterCampo(req.body, [
-        'notificacoesPropostas',
-        'notificacoes_propostas'
-      ]),
-      notificacoesMarketing: obterCampo(req.body, [
-        'notificacoesMarketing',
-        'notificacoes_marketing'
-      ])
-    };
+    if (campos.email) {
+      const emUso = await Usuario.exists({ email: campos.email, _id: { $ne: req.user.id_usuario } });
+      if (emUso) return erro(res, 409, 'Já existe um usuário cadastrado com este e-mail.');
+    }
 
-    Object.keys(camposPermitidos).forEach((chave) => {
-      if (camposPermitidos[chave] === undefined) {
-        delete camposPermitidos[chave];
-      }
-    });
-
-    const usuario = await Usuario.findByIdAndUpdate(req.user.id_usuario, camposPermitidos, {
+    const usuario = await Usuario.findByIdAndUpdate(req.user.id_usuario, campos, {
       new: true,
       runValidators: true
     });
@@ -560,6 +535,13 @@ exports.atualizarPerfil = async (req, res) => {
       user: mapUsuario(req, usuario)
     });
   } catch (error) {
+    // corrida entre a verificação acima e o salvamento ainda cai no índice único.
+    if (error?.code === 11000 && (error.keyPattern?.email || error.keyValue?.email)) {
+      return erro(res, 409, 'Já existe um usuário cadastrado com este e-mail.');
+    }
+    if (error?.name === 'ValidationError' || error?.name === 'CastError') {
+      return erro(res, 400, 'Dados do perfil inválidos.');
+    }
     console.error(error);
     return erro(res, 500, 'Erro ao atualizar perfil.');
   }
@@ -609,7 +591,7 @@ exports.alterarTipoConta = async (req, res) => {
       });
     }
 
-    const servicosAtivos = await Servico.countDocuments({ freelancer: usuario._id });
+    const servicosAtivos = await Servico.countDocuments({ freelancer: usuario._id, ...PUBLICADOS });
     const contratosAtivos = await Contrato.countDocuments({
       freelancer: usuario._id,
       status: { $in: ['pendente', 'proposta_pendente', 'proposta_aceita', 'em_andamento'] }
@@ -668,7 +650,7 @@ exports.atualizarFoto = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return erro(res, 500, error.message || 'Erro ao atualizar a foto de perfil.');
+    return erro(res, 500, 'Erro ao atualizar a foto de perfil.');
   }
 };
 
@@ -681,6 +663,14 @@ exports.atualizarSenha = async (req, res) => {
 
     if (!senhaAtual || !novaSenha || !confirmarSenha) {
       return erro(res, 400, 'Preencha a senha atual, a nova senha e a confirmação.');
+    }
+
+    if ([senhaAtual, novaSenha, confirmarSenha].some((valor) => typeof valor !== 'string')) {
+      return erro(res, 400, 'Senhas inválidas.');
+    }
+
+    if (novaSenha.length > 128) {
+      return erro(res, 400, 'A nova senha deve ter no máximo 128 caracteres.');
     }
 
     if (String(novaSenha).length < 8) {
@@ -698,57 +688,28 @@ exports.atualizarSenha = async (req, res) => {
     if (!senhaCorreta) return erro(res, 401, 'Senha atual incorreta.');
 
     usuario.senha = await bcrypt.hash(String(novaSenha), 10);
+    // revoga todas as sessões anteriores; quem trocou a senha recebe um token novo e continua conectado.
+    usuario.versaoSessao = Number(usuario.versaoSessao || 0) + 1;
     await usuario.save();
 
-    return sucesso(res, 200, 'Senha atualizada com sucesso!');
+    return sucesso(res, 200, 'Senha atualizada com sucesso!', null, {
+      token: emitirToken(usuario),
+      user: mapUsuario(req, usuario)
+    });
   } catch (error) {
     console.error(error);
     return erro(res, 500, 'Erro ao atualizar senha.');
   }
 };
 
-// exclui a conta e limpa dados relacionados pra não sobrar contrato, favorito ou avaliação apontando pra usuário removido.
+// exclui a conta por anonimização (regra técnica do projeto): exige a senha atual, bloqueia com contratos
+// ativos e preserva contratos encerrados, avaliações e mensagens que compõem o histórico da outra parte.
 exports.excluirPerfil = async (req, res) => {
   try {
-    const userId = req.user.id_usuario;
-    const usuario = await Usuario.findById(userId);
-    if (!usuario) {
-      return erro(res, 404, 'Usuário não encontrado.');
-    }
-
-    const servicos = await Servico.find({ freelancer: userId });
-    servicos.forEach((servico) => {
-      if (servico.imagemServico && !ehArquivoPadrao(servico.imagemServico)) {
-        removerArquivoSeExistir(servico.imagemServico);
-      }
-    });
-
-    const servicoIds = servicos.map((servico) => servico._id);
-
-    await Promise.all([
-      // serviços publicados pelo usuário.
-      Servico.deleteMany({ freelancer: userId }),
-
-      // contratos nos quais ele participa como cliente ou freelancer.
-      Contrato.deleteMany({ $or: [{ cliente: userId }, { freelancer: userId }] }),
-
-      // avaliações que ele escreveu, recebeu ou vinculadas aos serviços removidos.
-      Avaliacao.deleteMany({
-        $or: [{ autor: userId }, { freelancer: userId }, { servico: { $in: servicoIds } }]
-      }),
-
-      // favoritos do usuário e favoritos que apontavam para serviços removidos.
-      Favorito.deleteMany({
-        $or: [{ usuario: userId }, { servico: { $in: servicoIds } }]
-      })
-    ]);
-
-    if (usuario.fotoPerfil && !ehArquivoPadrao(usuario.fotoPerfil)) {
-      removerArquivoSeExistir(usuario.fotoPerfil);
-    }
-
-    await Usuario.findByIdAndDelete(userId);
-    return sucesso(res, 200, 'Conta excluída com sucesso!');
+    const senhaAtual = obterCampo(req.body || {}, ['senhaAtual', 'senha', 'currentPassword']);
+    const resultado = await excluirConta(req.user.id_usuario, senhaAtual);
+    if (!resultado.ok) return erro(res, resultado.status, resultado.mensagem);
+    return sucesso(res, 200, 'Conta excluída com sucesso.');
   } catch (error) {
     console.error(error);
     return erro(res, 500, 'Erro ao excluir a conta.');

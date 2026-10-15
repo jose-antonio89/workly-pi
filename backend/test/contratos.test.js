@@ -43,6 +43,13 @@ function setup(t, status) {
     }
   };
   t.mock.method(Contrato, 'findById', () => query);
+  // atomic transitions: apply $set only when every filter field still matches the stored contract.
+  t.mock.method(Contrato, 'findOneAndUpdate', async (filter, update) => {
+    const matches = Object.entries(filter).every(([key, value]) => String(contract[key]) === String(value));
+    if (!matches) return null;
+    Object.assign(contract, update.$set);
+    return contract;
+  });
   t.mock.method(Notificacao, 'create', async () => ({}));
   return contract;
 }

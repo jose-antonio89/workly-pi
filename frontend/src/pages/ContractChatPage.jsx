@@ -197,7 +197,7 @@ export default function ContractChatPage() {
                     ))}
                   </dl>
                   <div className="mt-4 grid gap-2.5">
-                    {contract.idServico && (
+                    {contract.idServico && contract.servicoDisponivel !== false && (
                       <ModuleButton
                         className="py-0!"
                         to={`/detalhe-servico?id=${contract.idServico}`}

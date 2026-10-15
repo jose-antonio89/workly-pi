@@ -10,7 +10,10 @@ const servicoSchema = new mongoose.Schema(
     extra: { type: String, default: '', trim: true },
     imagemServico: { type: String, default: '/uploads/servicos/servico_padrao.svg' },
     categoria: { type: mongoose.Schema.Types.ObjectId, ref: 'Categoria', required: true },
-    freelancer: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true }
+    freelancer: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
+    // exclusão lógica: sai do catálogo e da contratação, mas segue disponível para contratos e avaliações.
+    removido: { type: Boolean, default: false },
+    removidoEm: { type: Date, default: null }
   },
   { timestamps: true }
 );

@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const Mensagem = require('../models/Mensagem');
 const Contrato = require('../models/Contrato');
+const Usuario = require('../models/Usuario');
+const Servico = require('../models/Servico');
 const Notificacao = require('../models/Notificacao');
 const { sucesso, erro } = require('../utils/apiResponse');
 const { notificarMensagemNova } = require('../utils/notificacaoUtils');
@@ -26,21 +28,27 @@ function toObjectId(value) {
 // só deixa ler/enviar mensagem se o usuário fizer parte do contrato.
 // sem isso qualquer pessoa poderia tentar abrir conversa pelo id.
 async function carregarContratoDoUsuario(contratoId, userId) {
-  const contrato = await Contrato.findById(contratoId)
-    .select('servico cliente freelancer status')
-    .populate('servico', 'nome')
-    .populate('cliente', 'nome')
-    .populate('freelancer', 'nome')
-    .lean();
-
+  // autoriza pelos ids gravados no contrato: se uma das partes ou o serviço não existir mais,
+  // a checagem continua correta e a resposta segue controlada.
+  const contrato = await Contrato.findById(contratoId).select('servico cliente freelancer status').lean();
   if (!contrato) return null;
 
-  const ehCliente = String(contrato.cliente._id) === String(userId);
-  const ehFreelancer = String(contrato.freelancer._id) === String(userId);
-
+  const ehCliente = String(contrato.cliente) === String(userId);
+  const ehFreelancer = String(contrato.freelancer) === String(userId);
   if (!ehCliente && !ehFreelancer) return null;
 
-  return contrato;
+  const [usuarios, servico] = await Promise.all([
+    Usuario.find({ _id: { $in: [contrato.cliente, contrato.freelancer] } }).select('nome').lean(),
+    Servico.findById(contrato.servico).select('nome').lean()
+  ]);
+  const nomeDe = (id) =>
+    usuarios.find((usuario) => String(usuario._id) === String(id))?.nome || 'Usuário removido';
+  return {
+    ...contrato,
+    cliente: { _id: contrato.cliente, nome: nomeDe(contrato.cliente) },
+    freelancer: { _id: contrato.freelancer, nome: nomeDe(contrato.freelancer) },
+    servico: { _id: contrato.servico, nome: servico?.nome || 'Serviço removido' }
+  };
 }
 
 // envia uma mensagem no chat de um contrato.
@@ -253,7 +261,7 @@ function mapMensagem(req, mensagem) {
     contratoId: mensagem.contrato?.toString() || '',
     remetente: {
       idUsuario: remetente._id?.toString() || '',
-      nome: remetente.nome || '',
+      nome: remetente.nome || 'Usuário removido',
       fotoPerfil,
       tipoConta: remetente.tipoConta || ''
     },

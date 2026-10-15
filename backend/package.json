@@ -5,7 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "test": "node --test test/*.test.js",
-    "dev": "nodemon src/server.js",
+    "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "seed": "node src/seed.js",
     "backup": "node src/scripts/backup.js",
@@ -21,9 +21,6 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.6.2",
     "multer": "^2.0.2"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.9"
   },
   "private": true
 }

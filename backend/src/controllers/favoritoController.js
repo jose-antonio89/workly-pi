@@ -24,7 +24,8 @@ exports.listar = async (req, res) => {
       res,
       200,
       'Favoritos carregados.',
-      favoritos.map((f) => mapFavorito(req, f))
+      // favoritos de serviços retirados ou apagados em versões antigas não aparecem.
+      favoritos.filter((f) => f.servico && !f.servico.removido).map((f) => mapFavorito(req, f))
     );
   } catch (error) {
     console.error(error);
@@ -56,7 +57,7 @@ exports.criar = async (req, res) => {
     if (!idMongoValido(servicoId)) return erro(res, 400, 'Identificador de serviço inválido.');
 
     const servico = await Servico.findById(servicoId);
-    if (!servico) return erro(res, 404, 'Serviço não encontrado.');
+    if (!servico || servico.removido) return erro(res, 404, 'Serviço não encontrado.');
 
     // upsert garante que clicar duas vezes não duplica o favorito.
     await Favorito.updateOne(

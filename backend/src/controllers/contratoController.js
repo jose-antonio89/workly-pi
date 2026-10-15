@@ -4,6 +4,7 @@ const Avaliacao = require('../models/Avaliacao');
 const { sucesso, erro } = require('../utils/apiResponse');
 const { mapContrato } = require('../utils/mapeadoresResposta');
 const { idMongoValido } = require('../utils/requisicaoUtils');
+const { contaPodeContratar } = require('../services/contaService');
 const {
   notificarContratoNovo,
   notificarPropostaAceita,
@@ -13,18 +14,16 @@ const {
   notificarContratoCancelado
 } = require('../utils/notificacaoUtils');
 
-const STATUS_ATIVOS = [
-  'pendente',
-  'proposta_pendente',
-  'proposta_aceita',
-  'em_andamento',
-  'entregue'
-];
+const { STATUS_ATIVOS } = Contrato;
+const MENSAGEM_DUPLICADO = 'Você já possui uma contratação ativa para este serviço.';
+const MENSAGEM_SERVICO_INDISPONIVEL = 'Este serviço não está mais disponível para contratação.';
+const MENSAGEM_INDISPONIVEL =
+  'Novos pedidos e propostas estão temporariamente indisponíveis. Tente novamente mais tarde.';
 const STATUS_FINAIS = ['cancelado', 'concluido', 'encerrado'];
 
 function popularContrato(query) {
   const camposUsuario =
-    'nome fotoPerfil tipoConta areaAtuacao tituloProfissional bio localizacao site linkedin github instagram avaliacaoMedia totalAvaliacoes';
+    'nome fotoPerfil tipoConta areaAtuacao tituloProfissional bio localizacao site linkedin github instagram avaliacaoMedia totalAvaliacoes removido';
   return query
     .populate({
       path: 'servico',
@@ -90,17 +89,14 @@ async function carregarContratoAutorizado(req, res) {
   return { contrato, userId };
 }
 
-// depois de mudar o status, sempre salvamos e devolvemos o contrato já populado pro front.
-async function salvarERetornar(req, res, contrato, mensagem = 'Contrato atualizado.') {
-  await contrato.save();
-  const completo = await popularContrato(Contrato.findById(contrato._id));
-  return sucesso(res, 200, mensagem, mapContrato(req, completo, usuarioDoToken(req)));
-}
-
 // cria uma contratação nova.
 // aqui também nasce o fluxo de proposta quando o serviço é valor a combinar.
 exports.criar = async (req, res) => {
   try {
+    // a consulta prévia abaixo não basta contra pedidos simultâneos: sem o índice único verificado, nada é criado.
+    if (!(await Contrato.protecaoContratosDisponivel())) {
+      return erro(res, 503, MENSAGEM_INDISPONIVEL);
+    }
     const { servicoId } = req.body;
     const mensagem = String(req.body.mensagem || '').trim();
     const detalhesPedido = String(req.body.detalhesPedido || req.body.detalhes_pedido || '').trim();
@@ -122,6 +118,10 @@ exports.criar = async (req, res) => {
     }
     const servico = await Servico.findById(servicoId).populate('freelancer');
     if (!servico) return erro(res, 404, 'Serviço não encontrado.');
+    // serviço retirado, ou de freelancer removido/inexistente, não aceita novos pedidos.
+    if (servico.removido || !servico.freelancer || servico.freelancer.removido) {
+      return erro(res, 409, MENSAGEM_SERVICO_INDISPONIVEL);
+    }
 
     const userId = usuarioDoToken(req);
     if (String(servico.freelancer._id) === String(userId))
@@ -143,7 +143,12 @@ exports.criar = async (req, res) => {
       status: { $in: STATUS_ATIVOS }
     });
     if (existente) {
-      return erro(res, 409, 'Você já possui uma contratação ativa para este serviço.');
+      return erro(res, 409, MENSAGEM_DUPLICADO);
+    }
+
+    const partes = [userId, servico.freelancer._id];
+    if (!(await Promise.all(partes.map(contaPodeContratar))).every(Boolean)) {
+      return erro(res, 409, MENSAGEM_SERVICO_INDISPONIVEL);
     }
 
     const contrato = await Contrato.create({
@@ -160,14 +165,18 @@ exports.criar = async (req, res) => {
       status: tipoContratacao === 'fixo' ? 'pendente' : 'proposta_pendente'
     });
 
+    // a exclusão de conta marca o usuário antes de procurar contratos ativos. Conferir de novo depois
+    // de gravar fecha a corrida: se uma das partes entrou em exclusão, este pedido recém-criado é desfeito.
+    if (!(await Promise.all(partes.map(contaPodeContratar))).every(Boolean)) {
+      await Contrato.deleteOne({ _id: contrato._id });
+      return erro(res, 409, MENSAGEM_SERVICO_INDISPONIVEL);
+    }
+
+    // a notificação só sai depois que o contrato existe; uma falha nela não desfaz o pedido.
+    await notificarDepois(() =>
+      notificarContratoNovo(servico.freelancer._id, contrato._id, servico.nome, tipoContratacao)
+    );
     const completo = await popularContrato(Contrato.findById(contrato._id));
-    // notifica o freelancer da nova contratação/proposta em background.
-    notificarContratoNovo(
-      servico.freelancer._id,
-      contrato._id,
-      servico.nome,
-      tipoContratacao
-    ).catch(() => {});
     return sucesso(
       res,
       201,
@@ -177,6 +186,8 @@ exports.criar = async (req, res) => {
       mapContrato(req, completo, userId)
     );
   } catch (error) {
+    // pedidos simultâneos: o índice único parcial deixa passar só o primeiro.
+    if (error?.code === 11000) return erro(res, 409, MENSAGEM_DUPLICADO);
     console.error(error);
     return erro(res, 500, 'Erro ao criar contratação.');
   }
@@ -212,225 +223,201 @@ exports.meus = async (req, res) => {
   }
 };
 
-// ação do freelancer: aceita proposta ou inicia contrato fixo.
-// contrato fixo já vai direto pra em andamento; proposta de valor a combinar passa por proposta_aceita.
-exports.aceitar = async (req, res) => {
-  try {
-    const dados = await carregarContratoAutorizado(req, res);
-    if (!dados) return;
-    const { contrato, userId } = dados;
-    if (!ehFreelancer(contrato, userId))
-      return erro(res, 403, 'Somente o freelancer pode aceitar a proposta.');
-    if (!['proposta_pendente', 'pendente'].includes(contrato.status))
-      return erro(res, 400, 'Este contrato não está aguardando início.');
-    contrato.status = contrato.tipoContratacao === 'fixo' ? 'em_andamento' : 'proposta_aceita';
-    const nomeServico = await obterNomeServico(contrato);
-    // fixo = freelancer aceitou e já vai iniciar; notifica como trabalho iniciado.
-    // negociável = proposta aceita, mas ainda não iniciou.
-    const notificarAceite =
-      contrato.tipoContratacao === 'fixo' ? notificarTrabalhoIniciado : notificarPropostaAceita;
-    notificarAceite(contrato.cliente, contrato._id, nomeServico).catch(() => {});
-    return salvarERetornar(
-      req,
-      res,
-      contrato,
-      contrato.tipoContratacao === 'fixo' ? 'Contrato iniciado.' : 'Proposta aceita.'
-    );
-  } catch (error) {
-    console.error(error);
-    return erro(res, 500, 'Erro ao aceitar contrato.');
-  }
+// mensagem única para quando outra requisição mudou o contrato entre a leitura e a gravação.
+const MENSAGEM_CONFLITO =
+  'Este contrato acabou de ser atualizado por outra ação. Atualize a página para ver a situação atual.';
+
+const PODE_CANCELAR = {
+  cliente: ['pendente', 'proposta_pendente', 'proposta_aceita'],
+  freelancer: ['pendente', 'proposta_pendente', 'proposta_aceita', 'em_andamento']
 };
 
-exports.recusar = async (req, res) => {
+// notificações só depois da gravação. Se falharem, a transição continua válida e só registramos a falha,
+// para o cliente da API não repetir uma ação que já foi aplicada.
+async function notificarDepois(enviar) {
   try {
-    const dados = await carregarContratoAutorizado(req, res);
-    if (!dados) return;
-    const { contrato, userId } = dados;
-    if (!ehFreelancer(contrato, userId))
-      return erro(res, 403, 'Somente o freelancer pode recusar a proposta.');
-    if (!['proposta_pendente', 'pendente'].includes(contrato.status))
-      return erro(res, 400, 'Este contrato não pode ser recusado agora.');
-    contrato.status = 'cancelado';
-    const nomeServico = await obterNomeServico(contrato);
-    notificarPropostaRecusada(contrato.cliente, contrato._id, nomeServico).catch(() => {});
-    return salvarERetornar(req, res, contrato, 'Proposta recusada.');
+    await enviar();
   } catch (error) {
-    console.error(error);
-    return erro(res, 500, 'Erro ao recusar contrato.');
+    console.error('Falha ao notificar transição de contrato:', error?.message || error);
   }
-};
+}
 
-exports.iniciar = async (req, res) => {
-  try {
-    const dados = await carregarContratoAutorizado(req, res);
-    if (!dados) return;
-    const { contrato, userId } = dados;
-    if (!ehFreelancer(contrato, userId))
-      return erro(res, 403, 'Somente o freelancer pode iniciar o trabalho.');
-    if (!['pendente', 'proposta_aceita'].includes(contrato.status))
-      return erro(res, 400, 'Este contrato não pode ser iniciado agora.');
-    contrato.status = 'em_andamento';
-    const nomeServico = await obterNomeServico(contrato);
-    notificarTrabalhoIniciado(contrato.cliente, contrato._id, nomeServico).catch(() => {});
-    return salvarERetornar(req, res, contrato, 'Trabalho iniciado.');
-  } catch (error) {
-    console.error(error);
-    return erro(res, 500, 'Erro ao iniciar contrato.');
+// aplica uma transição de forma atômica: só grava se o contrato ainda estiver no status lido
+// e o usuário continuar no papel exigido. Assim duas ações concorrentes nunca se sobrescrevem.
+// definicao: { papel(contrato, userId) -> 'cliente' | 'freelancer' | null, erroPapel,
+//   de(papel) -> status permitidos, erroStatus, codigoErroStatus, para(contrato), extra(contrato),
+//   mensagem(contrato), notificar(contrato, userId, nomeServico) }
+async function executarTransicao(req, res, definicao) {
+  const dados = await carregarContratoAutorizado(req, res);
+  if (!dados) return;
+  const { contrato, userId } = dados;
+
+  const papel = definicao.papel(contrato, userId);
+  if (!papel) return erro(res, 403, definicao.erroPapel);
+  if (!definicao.de(papel).includes(contrato.status)) {
+    return erro(res, definicao.codigoErroStatus || 400, definicao.erroStatus);
   }
-};
 
-exports.entregar = async (req, res) => {
-  try {
-    const dados = await carregarContratoAutorizado(req, res);
-    if (!dados) return;
-    const { contrato, userId } = dados;
-    if (!ehFreelancer(contrato, userId))
-      return erro(res, 403, 'Somente o freelancer pode finalizar a entrega.');
-    if (!['proposta_aceita', 'em_andamento'].includes(contrato.status))
-      return erro(res, 400, 'Este contrato não pode ser finalizado agora.');
-    contrato.status = 'entregue';
-    const nomeServico = await obterNomeServico(contrato);
-    notificarEntregaRealizada(contrato.cliente, contrato._id, nomeServico).catch(() => {});
-    return salvarERetornar(
-      req,
-      res,
-      contrato,
-      'Entrega enviada. Aguardando confirmação do cliente.'
-    );
-  } catch (error) {
-    console.error(error);
-    return erro(res, 500, 'Erro ao finalizar entrega.');
+  const statusAnterior = contrato.status;
+  const atualizado = await Contrato.findOneAndUpdate(
+    { _id: contrato._id, status: statusAnterior, [papel]: userId },
+    { $set: { status: definicao.para(contrato), ...(definicao.extra ? definicao.extra(contrato) : {}) } },
+    { new: true }
+  );
+  if (!atualizado) return erro(res, 409, MENSAGEM_CONFLITO);
+
+  if (definicao.notificar) {
+    const nomeServico = await obterNomeServico(atualizado).catch(() => 'Serviço');
+    await notificarDepois(() => definicao.notificar(atualizado, userId, nomeServico));
   }
-};
 
-exports.confirmarEntrega = async (req, res) => {
-  try {
-    const dados = await carregarContratoAutorizado(req, res);
-    if (!dados) return;
-    const { contrato, userId } = dados;
-    if (!ehCliente(contrato, userId))
-      return erro(res, 403, 'Somente o cliente pode confirmar a entrega.');
-    if (contrato.status !== 'entregue')
-      return erro(res, 400, 'Este contrato não possui uma entrega aguardando confirmação.');
-    contrato.status = 'concluido';
-    return salvarERetornar(req, res, contrato, 'Entrega confirmada. Contrato concluído.');
-  } catch (error) {
-    console.error(error);
-    return erro(res, 500, 'Erro ao confirmar entrega.');
-  }
-};
+  const completo = await popularContrato(Contrato.findById(atualizado._id));
+  return sucesso(
+    res,
+    200,
+    definicao.mensagem(contrato),
+    mapContrato(req, completo || atualizado, userId)
+  );
+}
 
-exports.cancelar = async (req, res) => {
-  try {
-    const dados = await carregarContratoAutorizado(req, res);
-    if (!dados) return;
-    const { contrato, userId } = dados;
-    const clientePodeCancelar =
-      ehCliente(contrato, userId) &&
-      ['pendente', 'proposta_pendente', 'proposta_aceita'].includes(contrato.status);
-    const freelancerPodeCancelar =
-      ehFreelancer(contrato, userId) &&
-      ['pendente', 'proposta_pendente', 'proposta_aceita', 'em_andamento'].includes(
-        contrato.status
-      );
-    if (!clientePodeCancelar && !freelancerPodeCancelar)
-      return erro(res, 403, 'Este contrato não pode ser cancelado por você neste momento.');
-    contrato.status = 'cancelado';
-    // notifica a outra parte do cancelamento.
-    const nomeServico = await obterNomeServico(contrato);
-    const ehCli = ehCliente(contrato, userId);
-    const destinatario = ehCli ? contrato.freelancer : contrato.cliente;
-    const quemCancelou = ehCli ? 'O contratante' : 'O freelancer';
-    notificarContratoCancelado(destinatario, contrato._id, nomeServico, quemCancelou).catch(
-      () => {}
-    );
-    return salvarERetornar(req, res, contrato, 'Contrato cancelado.');
-  } catch (error) {
-    console.error(error);
-    return erro(res, 500, 'Erro ao cancelar contrato.');
-  }
-};
+const somenteFreelancer = (erroPapel) => ({
+  papel: (contrato, userId) => (ehFreelancer(contrato, userId) ? 'freelancer' : null),
+  erroPapel
+});
 
-// compatibilidade com o front antigo: transforma patch /status em ações seguras sem recarregar o contrato duas vezes.
-
-// compatibilidade com o front antigo.
-// em vez de chamar outra rota por dentro, a regra fica aqui mesmo pra não buscar o contrato duas vezes.
-exports.atualizarStatus = async (req, res) => {
-  try {
-    const { status } = req.body;
-    const dados = await carregarContratoAutorizado(req, res);
-    if (!dados) return;
-
-    const { contrato, userId } = dados;
-    const nomeServico = await obterNomeServico(contrato);
-
-    if (status === 'cancelado') {
-      const clientePodeCancelar =
-        ehCliente(contrato, userId) &&
-        ['pendente', 'proposta_pendente', 'proposta_aceita'].includes(contrato.status);
-      const freelancerPodeCancelar =
-        ehFreelancer(contrato, userId) &&
-        ['pendente', 'proposta_pendente', 'proposta_aceita', 'em_andamento'].includes(
-          contrato.status
-        );
-      if (!clientePodeCancelar && !freelancerPodeCancelar) {
-        return erro(res, 403, 'Este contrato não pode ser cancelado por você neste momento.');
-      }
-      contrato.status = 'cancelado';
-      const ehCli = ehCliente(contrato, userId);
-      const destinatario = ehCli ? contrato.freelancer : contrato.cliente;
-      notificarContratoCancelado(
-        destinatario,
+const TRANSICOES = {
+  // freelancer aceita: contrato fixo já entra em andamento; proposta de valor a combinar vira proposta_aceita.
+  aceitar: {
+    ...somenteFreelancer('Somente o freelancer pode aceitar a proposta.'),
+    de: () => ['proposta_pendente', 'pendente'],
+    erroStatus: 'Este contrato não está aguardando início.',
+    para: (contrato) => (contrato.tipoContratacao === 'fixo' ? 'em_andamento' : 'proposta_aceita'),
+    mensagem: (contrato) =>
+      contrato.tipoContratacao === 'fixo' ? 'Contrato iniciado.' : 'Proposta aceita.',
+    notificar: (contrato, _userId, nomeServico) =>
+      (contrato.tipoContratacao === 'fixo' ? notificarTrabalhoIniciado : notificarPropostaAceita)(
+        contrato.cliente,
+        contrato._id,
+        nomeServico
+      )
+  },
+  recusar: {
+    ...somenteFreelancer('Somente o freelancer pode recusar a proposta.'),
+    de: () => ['proposta_pendente', 'pendente'],
+    erroStatus: 'Este contrato não pode ser recusado agora.',
+    para: () => 'cancelado',
+    mensagem: () => 'Proposta recusada.',
+    notificar: (contrato, _userId, nomeServico) =>
+      notificarPropostaRecusada(contrato.cliente, contrato._id, nomeServico)
+  },
+  iniciar: {
+    ...somenteFreelancer('Somente o freelancer pode iniciar o trabalho.'),
+    de: () => ['pendente', 'proposta_aceita'],
+    erroStatus: 'Este contrato não pode ser iniciado agora.',
+    para: () => 'em_andamento',
+    mensagem: () => 'Trabalho iniciado.',
+    notificar: (contrato, _userId, nomeServico) =>
+      notificarTrabalhoIniciado(contrato.cliente, contrato._id, nomeServico)
+  },
+  // o freelancer entrega; só o cliente confirma o recebimento.
+  entregar: {
+    ...somenteFreelancer('Somente o freelancer pode finalizar a entrega.'),
+    de: () => ['proposta_aceita', 'em_andamento'],
+    erroStatus: 'Este contrato não pode ser finalizado agora.',
+    para: () => 'entregue',
+    mensagem: () => 'Entrega enviada. Aguardando confirmação do cliente.',
+    notificar: (contrato, _userId, nomeServico) =>
+      notificarEntregaRealizada(contrato.cliente, contrato._id, nomeServico)
+  },
+  confirmar: {
+    papel: (contrato, userId) => (ehCliente(contrato, userId) ? 'cliente' : null),
+    erroPapel: 'Somente o cliente pode confirmar a entrega.',
+    de: () => ['entregue'],
+    erroStatus: 'Este contrato não possui uma entrega aguardando confirmação.',
+    para: () => 'concluido',
+    mensagem: () => 'Entrega confirmada. Contrato concluído.'
+  },
+  cancelar: {
+    papel: (contrato, userId) =>
+      ehCliente(contrato, userId) ? 'cliente' : ehFreelancer(contrato, userId) ? 'freelancer' : null,
+    erroPapel: 'Este contrato não pode ser cancelado por você neste momento.',
+    de: (papel) => PODE_CANCELAR[papel],
+    erroStatus: 'Este contrato não pode ser cancelado por você neste momento.',
+    codigoErroStatus: 403,
+    para: () => 'cancelado',
+    mensagem: () => 'Contrato cancelado.',
+    notificar: (contrato, userId, nomeServico) => {
+      const canceladoPeloCliente = ehCliente(contrato, userId);
+      return notificarContratoCancelado(
+        canceladoPeloCliente ? contrato.freelancer : contrato.cliente,
         contrato._id,
         nomeServico,
-        ehCli ? 'O contratante' : 'O freelancer'
-      ).catch(() => {});
-      return salvarERetornar(req, res, contrato, 'Contrato cancelado.');
+        canceladoPeloCliente ? 'O contratante' : 'O freelancer'
+      );
     }
+  }
+};
 
-    if (ehCliente(contrato, userId) && ['em_andamento', 'proposta_aceita'].includes(status)) {
-      return erro(res, 403, 'Somente o freelancer pode dar andamento ou finalizar a entrega.');
+function rotaDeTransicao(nome, mensagemErro) {
+  return async (req, res) => {
+    try {
+      return await executarTransicao(req, res, TRANSICOES[nome]);
+    } catch (error) {
+      console.error(error);
+      return erro(res, 500, mensagemErro);
     }
+  };
+}
 
-    if (status === 'concluido') {
-      if (!ehCliente(contrato, userId))
-        return erro(res, 403, 'Somente o cliente pode confirmar a entrega.');
-      if (contrato.status !== 'entregue')
-        return erro(res, 400, 'A entrega ainda não está aguardando confirmação.');
-      contrato.status = 'concluido';
-      return salvarERetornar(req, res, contrato, 'Entrega confirmada. Contrato concluído.');
-    }
+exports.aceitar = rotaDeTransicao('aceitar', 'Erro ao aceitar contrato.');
+exports.recusar = rotaDeTransicao('recusar', 'Erro ao recusar contrato.');
+exports.iniciar = rotaDeTransicao('iniciar', 'Erro ao iniciar contrato.');
+exports.entregar = rotaDeTransicao('entregar', 'Erro ao finalizar entrega.');
+exports.confirmarEntrega = rotaDeTransicao('confirmar', 'Erro ao confirmar entrega.');
+exports.cancelar = rotaDeTransicao('cancelar', 'Erro ao cancelar contrato.');
 
-    if (!ehFreelancer(contrato, userId)) {
-      return erro(res, 403, 'Sem permissão para fazer esta ação.');
-    }
+// compatibilidade com o front antigo: PATCH /status vira uma das transições acima,
+// com as mesmas permissões, mensagens e a mesma gravação atômica.
+const ACEITAR_PROPOSTA_ANTIGA = {
+  ...somenteFreelancer('Sem permissão para fazer esta ação.'),
+  de: () => ['proposta_pendente'],
+  erroStatus: 'Apenas propostas pendentes podem ser aceitas.',
+  para: () => 'proposta_aceita',
+  mensagem: () => 'Proposta aceita com sucesso.',
+  notificar: (contrato, _userId, nomeServico) =>
+    notificarPropostaAceita(contrato.cliente, contrato._id, nomeServico)
+};
+const INICIAR_ANTIGO = {
+  ...somenteFreelancer('Sem permissão para fazer esta ação.'),
+  de: () => ['pendente', 'proposta_aceita'],
+  erroStatus: 'Este contrato não pode ser iniciado neste momento.',
+  para: () => 'em_andamento',
+  mensagem: () => 'Contrato iniciado.',
+  notificar: TRANSICOES.iniciar.notificar
+};
 
-    if (status === 'proposta_aceita') {
-      if (contrato.status !== 'proposta_pendente') {
-        return erro(res, 400, 'Apenas propostas pendentes podem ser aceitas.');
-      }
-      contrato.status = 'proposta_aceita';
-      notificarPropostaAceita(contrato.cliente, contrato._id, nomeServico).catch(() => {});
-      return salvarERetornar(req, res, contrato, 'Proposta aceita com sucesso.');
-    }
-
+exports.atualizarStatus = async (req, res) => {
+  try {
+    const status = typeof req.body?.status === 'string' ? req.body.status : '';
+    if (status === 'cancelado') return await executarTransicao(req, res, TRANSICOES.cancelar);
+    if (status === 'concluido') return await executarTransicao(req, res, TRANSICOES.confirmar);
+    if (status === 'proposta_aceita') return await executarTransicao(req, res, ACEITAR_PROPOSTA_ANTIGA);
     if (status === 'em_andamento') {
-      if (contrato.status === 'proposta_pendente') {
-        contrato.status = 'proposta_aceita';
-        notificarPropostaAceita(contrato.cliente, contrato._id, nomeServico).catch(() => {});
-        return salvarERetornar(req, res, contrato, 'Proposta aceita com sucesso.');
-      }
-
-      if (!['pendente', 'proposta_aceita'].includes(contrato.status)) {
-        return erro(res, 400, 'Este contrato não pode ser iniciado neste momento.');
-      }
-
-      contrato.status = 'em_andamento';
-      notificarTrabalhoIniciado(contrato.cliente, contrato._id, nomeServico).catch(() => {});
-      return salvarERetornar(req, res, contrato, 'Contrato iniciado.');
+      return await executarTransicao(req, res, {
+        ...INICIAR_ANTIGO,
+        // no fluxo antigo, "em andamento" sobre proposta pendente significa aceitar a proposta.
+        de: () => ['pendente', 'proposta_aceita', 'proposta_pendente'],
+        para: (contrato) => (contrato.status === 'proposta_pendente' ? 'proposta_aceita' : 'em_andamento'),
+        mensagem: (contrato) =>
+          contrato.status === 'proposta_pendente' ? 'Proposta aceita com sucesso.' : 'Contrato iniciado.',
+        notificar: (contrato, userId, nomeServico) =>
+          (contrato.status === 'proposta_aceita' ? ACEITAR_PROPOSTA_ANTIGA : INICIAR_ANTIGO).notificar(
+            contrato,
+            userId,
+            nomeServico
+          )
+      });
     }
-
     return erro(res, 400, 'Status inválido.');
   } catch (error) {
     console.error(error);

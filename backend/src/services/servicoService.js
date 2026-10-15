@@ -3,6 +3,10 @@ const Servico = require('../models/Servico');
 const Avaliacao = require('../models/Avaliacao');
 const Usuario = require('../models/Usuario');
 const Contrato = require('../models/Contrato');
+const Favorito = require('../models/Favorito');
+
+// serviços retirados ficam fora do catálogo; documentos antigos sem o campo contam como publicados.
+const PUBLICADO = { removido: { $ne: true } };
 
 function escaparRegex(valor) {
   return String(valor).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -43,7 +47,7 @@ async function anexarResumoAvaliacoes(servicos = []) {
 }
 
 async function montarFiltro(query = {}) {
-  const filtro = {};
+  const filtro = { ...PUBLICADO };
   const busca = String(query.busca || query.q || '').trim();
   const categoriaRecebida = query.categoria || query.categoriaId || query.genero_id;
   const min = query.min ?? query.precoMin;
@@ -143,7 +147,7 @@ async function buscarPorCategoria(categoriaId, query = {}) {
   if (!categoria) return null;
 
   const { pagina, limite, skip } = obterPaginacao(query);
-  const filtro = { categoria: categoria._id };
+  const filtro = { categoria: categoria._id, ...PUBLICADO };
   const [servicos, total] = await Promise.all([
     consultarServicos(filtro, { ordenar: query.ordenar, skip, limite }),
     Servico.countDocuments(filtro)
@@ -161,7 +165,7 @@ async function buscarPorCategoria(categoriaId, query = {}) {
 }
 
 async function buscarPorId(id) {
-  const servico = await popularServico(Servico.findById(id)).lean();
+  const servico = await popularServico(Servico.findOne({ _id: id, ...PUBLICADO })).lean();
   if (!servico) return null;
 
   const [servicoComResumo] = await anexarResumoAvaliacoes([servico]);
@@ -169,7 +173,7 @@ async function buscarPorId(id) {
 }
 
 function buscarDocumentoPorId(id) {
-  return popularServico(Servico.findById(id));
+  return popularServico(Servico.findOne({ _id: id, ...PUBLICADO }));
 }
 
 async function criar({
@@ -264,11 +268,14 @@ async function remover(servico) {
   });
   if (contratosAtivos > 0) return { contratosAtivos: true };
 
-  await Servico.deleteOne({ _id: servico._id });
+  // exclusão lógica: contratos e avaliações continuam apontando para o serviço com nome e imagem preservados.
+  await Servico.updateOne({ _id: servico._id }, { $set: { removido: true, removidoEm: new Date() } });
+  await Favorito.deleteMany({ servico: servico._id });
   return { contratosAtivos: false };
 }
 
 module.exports = {
+  PUBLICADO,
   listar,
   buscarPorCategoria,
   buscarPorId,

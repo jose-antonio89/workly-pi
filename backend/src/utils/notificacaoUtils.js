@@ -159,6 +159,7 @@ async function notificarMensagemNova(destinatarioId, mensagemId, nomeRemetente, 
 }
 
 module.exports = {
+  TEMPLATES,
   notificarContratoNovo,
   notificarPropostaAceita,
   notificarPropostaRecusada,
