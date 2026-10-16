@@ -25,6 +25,7 @@ const ContractChatPage = lazy(() => import('./pages/ContractChatPage.jsx'));
 const FavoritesPage = lazy(() => import('./pages/FavoritesPage.jsx'));
 const AllServicesPage = lazy(() => import('./pages/AllServicesPage.jsx'));
 const AboutPage = lazy(() => import('./pages/AboutPage.jsx'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage.jsx'));
 function SocialPage({ Page }) {
   return (
     <Suspense fallback={<LoadingState />}>
@@ -42,6 +43,7 @@ export default function App() {
       <Route path="/perfil-publico" element={<PublicProfilePage />} />
       <Route path="/todos-servicos" element={<SocialPage Page={AllServicesPage} />} />
       <Route path="/sobre" element={<SocialPage Page={AboutPage} />} />
+      <Route path="/redefinir-senha" element={<SocialPage Page={ResetPasswordPage} />} />
       <Route element={<GuestRoute />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/cadastro" element={<RegisterPage />} />

@@ -5,6 +5,7 @@ const { mapUsuario } = require('../utils/mapeadoresResposta');
 const { sucesso, erro } = require('../utils/apiResponse');
 const { obterCampo, normalizarTipoConta } = require('../utils/requisicaoUtils');
 const { normalizarCpf, motivoCpfInvalido } = require('../utils/cpfUtils');
+const recuperacaoSenha = require('../services/recuperacaoSenhaService');
 
 // regex simples para e-mail — valida formato básico sem consulta externa.
 const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -111,6 +112,28 @@ exports.entrar = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
+    return erro(res, 500, 'Erro no servidor.');
+  }
+};
+
+// recuperação de senha: as regras ficam em services/recuperacaoSenhaService.js.
+exports.solicitarRedefinicao = async (req, res) => {
+  try {
+    const { status, mensagem } = await recuperacaoSenha.solicitar(req.body?.email);
+    return status === 200 ? sucesso(res, 200, mensagem) : erro(res, status, mensagem);
+  } catch (error) {
+    console.error('Erro ao solicitar redefinição de senha:', error?.message || error);
+    return erro(res, 500, 'Erro no servidor.');
+  }
+};
+
+exports.redefinirSenha = async (req, res) => {
+  try {
+    const { token, novaSenha, confirmarSenha } = req.body || {};
+    const { status, mensagem } = await recuperacaoSenha.redefinir(token, novaSenha, confirmarSenha);
+    return status === 200 ? sucesso(res, 200, mensagem) : erro(res, status, mensagem);
+  } catch (error) {
+    console.error('Erro ao redefinir senha:', error?.message || error);
     return erro(res, 500, 'Erro no servidor.');
   }
 };

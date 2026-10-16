@@ -8,6 +8,11 @@ router.post('/cadastro', controller.cadastrar);
 
 router.post('/login', controller.entrar);
 
+// recuperação de senha (limites por IP e por e-mail aplicados em app.js).
+router.post('/recuperar-senha', controller.solicitarRedefinicao);
+
+router.post('/redefinir-senha', controller.redefinirSenha);
+
 // alias antigos para não quebrar integrações já existentes.
 router.post('/register', controller.cadastrar);
 

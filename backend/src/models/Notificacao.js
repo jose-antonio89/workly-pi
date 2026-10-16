@@ -7,8 +7,12 @@ const TIPOS_VALIDOS = [
   'proposta_nova', // contratação negociável recebida pelo freelancer
   'proposta_aceita', // cliente recebe quando freelancer aceita
   'proposta_recusada', // cliente recebe quando freelancer recusa
+  'proposta_valor', // a outra parte recebe uma nova proposta ou contraproposta de valor
+  'valor_aprovado', // freelancer recebe quando o cliente aprova a contraproposta
+  'ajuste_solicitado', // freelancer recebe quando o cliente pede ajustes na entrega
   'trabalho_iniciado', // cliente recebe quando freelancer inicia
   'entrega_realizada', // cliente recebe quando freelancer entrega
+  'entrega_confirmada', // freelancer recebe quando o cliente confirma a entrega
   'contrato_cancelado', // a outra parte recebe quando alguém cancela
   'avaliacao_recebida', // freelancer recebe quando cliente avalia
   'mensagem_nova' // destinatário recebe quando alguém envia mensagem no chat

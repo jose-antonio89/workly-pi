@@ -1,66 +1,40 @@
-const fs = require('fs');
-const path = require('path');
-const { spawn } = require('child_process');
-const { mongoUri } = require('../config/ambiente');
+// npm run restore -- <pasta-do-backup> --confirmar <nome-da-base> --manutencao-confirmada [--incluir-uploads]
+//   [--permitir-reintroducao-excluidos --confirmar-reintroducao "REINTRODUZIR CONTAS EXCLUIDAS"]
+// Restaura na base de MONGO_URI. É destrutivo: leia backend/docs/backup-e-restore.md antes.
+const { restaurarBackup, mascarar, segredosDa } = require('./backupRestore');
 
-function executarComando(comando, argumentos) {
-  return new Promise((resolve, reject) => {
-    const processo = spawn(comando, argumentos, {
-      stdio: 'inherit',
-      shell: process.platform === 'win32'
-    });
-
-    processo.on('error', (error) => reject(error));
-
-    processo.on('close', (codigo) => {
-      if (codigo === 0) {
-        resolve();
-        return;
-      }
-
-      reject(new Error(`${comando} finalizou com código ${codigo}`));
-    });
-  });
-}
-
-function resolverPastaBackup(argumento) {
-  if (!argumento) {
-    throw new Error(
-      'Informe o caminho da pasta do backup. Exemplo: npm run restore -- ./backups/workly-mongodump-2026-06-10-12-00-00'
-    );
+function lerArgumentos(argv) {
+  const opcoes = {};
+  const valor = (i, nome) => {
+    if (argv[i + 1] === undefined || argv[i + 1].startsWith('--')) throw new Error(`${nome} precisa de um valor.`);
+    return argv[i + 1];
+  };
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--confirmar') opcoes.confirmar = valor(i++, arg);
+    else if (arg === '--manutencao-confirmada') opcoes.manutencaoConfirmada = true;
+    else if (arg === '--incluir-uploads') opcoes.incluirUploads = true;
+    else if (arg === '--permitir-reintroducao-excluidos') opcoes.permitirReintroducao = true;
+    else if (arg === '--confirmar-reintroducao') opcoes.confirmacaoReintroducao = valor(i++, arg);
+    else if (arg.startsWith('--')) throw new Error(`Opção desconhecida: ${arg}`);
+    else if (!opcoes.pasta) opcoes.pasta = arg;
+    else throw new Error(`Argumento a mais: ${arg}`);
   }
-
-  const caminho = path.resolve(process.cwd(), argumento);
-
-  if (!fs.existsSync(caminho)) {
-    throw new Error(`Pasta de backup não encontrada: ${caminho}`);
-  }
-
-  return caminho;
+  return opcoes;
 }
 
-async function executarRestore() {
-  const pastaBackup = resolverPastaBackup(process.argv[2]);
-
-  const argumentos = ['--uri', mongoUri, '--gzip', '--drop', pastaBackup];
-
-  console.log('Iniciando restauração do MongoDB com mongorestore...');
-  console.log(`Origem: ${pastaBackup}`);
-
-  await executarComando('mongorestore', argumentos);
-
-  console.log('Backup restaurado com sucesso.');
-}
-
-if (require.main === module) {
-  executarRestore().catch((error) => {
-    console.error('\nErro ao restaurar backup com mongorestore.');
-    console.error(
-      'Verifique se o MongoDB Database Tools está instalado e se o comando mongorestore funciona no terminal.'
-    );
-    console.error(`Detalhes: ${error.message}`);
+async function principal() {
+  const { mongoUri } = require('../config/ambiente');
+  let segredos = [];
+  try {
+    segredos = segredosDa(mongoUri);
+    await restaurarBackup({ uri: mongoUri, ...lerArgumentos(process.argv.slice(2)) });
+  } catch (error) {
+    console.error(`Restore não concluído: ${mascarar(error?.message || error, segredos)}`);
     process.exitCode = 1;
-  });
+  }
 }
 
-module.exports = { executarRestore };
+if (require.main === module) principal();
+
+module.exports = { lerArgumentos };

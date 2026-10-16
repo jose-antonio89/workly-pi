@@ -1,3 +1,5 @@
+const { estadoAcordo, vezNaNegociacao } = require('./acordoContrato');
+
 function montarUrlImagem(req, caminho) {
   if (!caminho) return '';
   if (caminho.startsWith('http')) return caminho;
@@ -159,6 +161,8 @@ function mapContrato(req, contrato, usuarioAtualId = null) {
   const statusNormalizado = contrato.status === 'encerrado' ? 'concluido' : contrato.status;
   const cliente = contrato.cliente || {};
   const freelancer = contrato.freelancer || servico.freelancer || {};
+  // preco só aparece quando há valor aprovado; precoProposto é o valor que ainda aguarda resposta.
+  const acordo = estadoAcordo(contrato);
   const base = {
     idContrato: contrato._id.toString(),
     idServico: servico._id ? servico._id.toString() : '',
@@ -170,8 +174,21 @@ function mapContrato(req, contrato, usuarioAtualId = null) {
       req,
       servico.imagemServico || '/uploads/servicos/servico_padrao.svg'
     ),
-    preco: contrato.preco,
-    precoProposto: contrato.precoProposto,
+    preco: acordo.valorAcordado,
+    precoProposto: acordo.valorEmNegociacao,
+    negociacao: {
+      estado: acordo.estado,
+      vez: vezNaNegociacao(contrato, acordo),
+      valorAcordado: acordo.valorAcordado,
+      valorEmNegociacao: acordo.valorEmNegociacao
+    },
+    historico: (contrato.historico || []).map((evento) => ({
+      tipo: evento.tipo,
+      papel: evento.papel,
+      valor: evento.valor ?? null,
+      justificativa: evento.justificativa || '',
+      data: evento.data
+    })),
     mensagem: contrato.mensagem || '',
     detalhesPedido: contrato.detalhesPedido || '',
     prazoDesejado: contrato.prazoDesejado || '',

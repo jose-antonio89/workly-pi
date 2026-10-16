@@ -93,3 +93,53 @@ test('contract API keeps raw review/proposal field types, POST actions and backe
     '/contratos?notificacoes=contratos&contrato=c#x'
   );
 });
+test('value negotiation: only agreed contracts move on, and labels follow whose turn it is', async (t) => {
+  const { negotiationOpen, historyEntry, proposeValue, approveValue, requestAdjustment } = await import(
+    '../src/services/contractService.js'
+  );
+  const open = (vez, extra = {}) => ({
+    tipoContratacao: 'combinar',
+    status: 'proposta_pendente',
+    negociacao: { estado: vez === 'cliente' ? 'aguardando_cliente' : 'aguardando_freelancer', vez, valorEmNegociacao: 450 },
+    precoProposto: 450,
+    ...extra
+  });
+  assert.equal(negotiationOpen(open('cliente')), true);
+  // approval happens in the negotiation panel, never through the generic "aceitar" button
+  assert.deepEqual(contractActions({ ...open('freelancer'), papel: 'freelancer' }), [['recusar', 'Recusar']]);
+  assert.equal(contractPrice(open('cliente'))[1], 'Contraproposta: R$ 450,00');
+  assert.equal(contractFeedback({ ...open('cliente'), papel: 'cliente' }), null);
+  // legacy contract already in progress without an agreed value cannot be delivered or confirmed
+  const legacy = {
+    tipoContratacao: 'combinar',
+    status: 'em_andamento',
+    papel: 'freelancer',
+    negociacao: { estado: 'pendente_acordo', vez: 'ambos' }
+  };
+  assert.deepEqual(contractActions(legacy).map(([a]) => a), ['cancelar']);
+  assert.equal(contractPrice(legacy)[1], 'Valor pendente de acordo');
+  assert.equal(negotiationOpen({ ...legacy, status: 'cancelado' }), false);
+  const closed = { tipoContratacao: 'combinar', status: 'proposta_aceita', papel: 'freelancer', preco: 450, negociacao: { estado: 'fechado' } };
+  assert.equal(negotiationOpen(closed), false);
+  assert.deepEqual(contractActions(closed).map(([a]) => a), ['iniciar', 'entregar', 'cancelar']);
+  assert.equal(contractPrice(closed)[1], 'R$ 450,00');
+  assert.equal(historyEntry({ tipo: 'contraproposta', papel: 'freelancer', valor: 450 }, 'cliente'), 'Freelancer fez contraproposta de R$ 450,00');
+  assert.equal(historyEntry({ tipo: 'aceite', papel: 'cliente', valor: 450 }, 'cliente'), 'Você aprovou R$ 450,00');
+
+  const old = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: () => null } });
+  t.after(() => (old ? Object.defineProperty(globalThis, 'localStorage', old) : delete globalThis.localStorage));
+  const calls = [];
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    calls.push([url, options.method, JSON.parse(options.body)]);
+    return Response.json({ dados: {} });
+  });
+  await proposeValue('c', 500);
+  await approveValue('c', 500);
+  await requestAdjustment('c', 'Faltou a versão em preto e branco.');
+  assert.deepEqual(calls, [
+    ['/api/contratos/c/propor-valor', 'POST', { valor: 500 }],
+    ['/api/contratos/c/aprovar-valor', 'POST', { valor: 500 }],
+    ['/api/contratos/c/solicitar-ajuste', 'POST', { justificativa: 'Faltou a versão em preto e branco.' }]
+  ]);
+});

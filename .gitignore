@@ -11,3 +11,15 @@ backend/backups/
 *.log
 .DS_Store
 Thumbs.db
+
+# Ferramentas e configurações locais de desenvolvimento
+.claude/
+.maestro/
+.impeccable/
+/DESIGN.md
+/PRODUCT.md
+
+# Arquivos temporários e cópias locais
+*.tmp
+*.bak
+*.orig

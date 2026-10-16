@@ -12,6 +12,7 @@ import {
 } from '../../services/contractService';
 import { defaultServiceImage } from '../../services/catalogService';
 import ReviewForm from './ReviewForm';
+import { AdjustmentRequest, ContractHistory, NegotiationPanel } from './ContractNegotiation';
 
 const tone = {
   waiting: 'bg-[#fdf3e2] text-[#8a5000] dark:bg-[#f2c14e]/15 dark:text-[#f2c14e]',
@@ -127,11 +128,14 @@ export default function ContractCard({ contract: c, onAction, onReview }) {
             {feedback[1]}
           </p>
         )}
+        <NegotiationPanel contract={c} onAction={onAction} />
+        <AdjustmentRequest contract={c} onAction={onAction} />
         {canReview(c) && (
           <div className="mt-4">
             <ReviewForm contract={c} onReview={onReview} />
           </div>
         )}
+        <ContractHistory contract={c} />
       </div>
       <div className="flex flex-wrap items-center gap-2 empty:hidden sm:col-start-2 lg:col-start-3 lg:row-span-2 lg:row-start-1 lg:flex-col lg:items-end lg:gap-3">
         <span className={`hidden shrink-0 items-center rounded-full lg:inline-flex px-3 py-1 text-[0.8rem] font-semibold ${status}`}>
@@ -153,12 +157,14 @@ export default function ContractCard({ contract: c, onAction, onReview }) {
         ))}
       </div>
       <div className="-mt-2 -ml-2.5 flex flex-wrap items-center gap-1 sm:col-start-2 lg:row-start-2">
-        {!finalStatuses.includes(c.status) && (
-          <Link to={`/mensagens?contrato=${c.idContrato}`} className="inline-flex min-h-10 items-center gap-2 rounded-md px-2.5 text-sm font-medium transition-colors text-workly-primary-ink hover:bg-workly-primary-tint">
-            <i aria-hidden="true" className="fas fa-comments" />
-            Chat
-          </Link>
-        )}
+        {/* closed contracts keep the conversation readable in the contract chat page. */}
+        <Link
+          to={finalStatuses.includes(c.status) ? `/contrato-chat?id=${c.idContrato}` : `/mensagens?contrato=${c.idContrato}`}
+          className="inline-flex min-h-10 items-center gap-2 rounded-md px-2.5 text-sm font-medium transition-colors text-workly-primary-ink hover:bg-workly-primary-tint"
+        >
+          <i aria-hidden="true" className="fas fa-comments" />
+          {finalStatuses.includes(c.status) ? 'Ver conversa' : 'Chat'}
+        </Link>
         {c.idServico && c.servicoDisponivel !== false && (
           <Link to={`/detalhe-servico?id=${c.idServico}`} className="inline-flex min-h-10 items-center gap-2 rounded-md px-2.5 text-sm font-medium transition-colors text-workly-ink-warm hover:bg-workly-sunken">
             Ver serviço

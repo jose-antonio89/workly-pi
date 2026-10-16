@@ -594,7 +594,8 @@ exports.alterarTipoConta = async (req, res) => {
     const servicosAtivos = await Servico.countDocuments({ freelancer: usuario._id, ...PUBLICADOS });
     const contratosAtivos = await Contrato.countDocuments({
       freelancer: usuario._id,
-      status: { $in: ['pendente', 'proposta_pendente', 'proposta_aceita', 'em_andamento'] }
+      // inclui "entregue": uma entrega aguardando confirmação ou ajuste ainda é um contrato ativo.
+      status: { $in: Contrato.STATUS_ATIVOS }
     });
 
     if (servicosAtivos > 0 || contratosAtivos > 0) {

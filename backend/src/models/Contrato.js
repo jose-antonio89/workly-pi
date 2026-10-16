@@ -4,6 +4,20 @@ const mongoose = require('mongoose');
 const STATUS_ATIVOS = ['pendente', 'proposta_pendente', 'proposta_aceita', 'em_andamento', 'entregue'];
 const INDICE_CONTRATO_ATIVO = 'contrato_ativo_unico_por_cliente_servico';
 
+// cada evento do acordo e das entregas fica registrado com autor, papel, valor (quando houver) e data.
+const TIPOS_EVENTO = ['proposta', 'contraproposta', 'aceite', 'entrega', 'ajuste_solicitado'];
+const eventoSchema = new mongoose.Schema(
+  {
+    tipo: { type: String, enum: TIPOS_EVENTO, required: true },
+    autor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
+    papel: { type: String, enum: ['cliente', 'freelancer'], required: true },
+    valor: { type: Number, default: null },
+    justificativa: { type: String, default: '', maxlength: 1000 },
+    data: { type: Date, default: Date.now }
+  },
+  { _id: false }
+);
+
 const contratoSchema = new mongoose.Schema(
   {
     cliente: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
@@ -16,6 +30,12 @@ const contratoSchema = new mongoose.Schema(
     prazoDesejado: { type: String, default: '', trim: true },
     referencias: { type: String, default: '', trim: true },
     tipoContratacao: { type: String, enum: ['fixo', 'negociavel', 'combinar'], default: 'fixo' },
+    // só contratos a combinar negociam: precoProposto é o valor na mesa e preco só recebe o valor
+    // quando as duas partes aprovam. Contratos antigos não têm este campo (veja utils/acordoContrato.js).
+    negociacao: {
+      estado: { type: String, enum: ['aguardando_freelancer', 'aguardando_cliente', 'fechado'], default: undefined }
+    },
+    historico: { type: [eventoSchema], default: undefined },
     status: {
       type: String,
       enum: [
@@ -174,6 +194,7 @@ function configurarProtecaoParaTeste({ novaTentativaMs, revalidacaoMs, expirar }
 
 module.exports = Contrato;
 module.exports.STATUS_ATIVOS = STATUS_ATIVOS;
+module.exports.TIPOS_EVENTO = TIPOS_EVENTO;
 module.exports.INDICE_CONTRATO_ATIVO = INDICE_CONTRATO_ATIVO;
 module.exports.encontrarContratosAtivosDuplicados = encontrarContratosAtivosDuplicados;
 module.exports.verificarIndiceContratoAtivo = verificarIndiceContratoAtivo;

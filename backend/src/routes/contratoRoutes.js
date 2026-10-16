@@ -19,6 +19,13 @@ router.post('/:id/entregar', auth, controller.entregar);
 
 router.post('/:id/confirmar', auth, controller.confirmarEntrega);
 
+router.post('/:id/solicitar-ajuste', auth, controller.solicitarAjuste);
+
+// negociação de valor dos contratos a combinar.
+router.post('/:id/propor-valor', auth, controller.proporValor);
+
+router.post('/:id/aprovar-valor', auth, controller.aprovarValor);
+
 router.post('/:id/cancelar', auth, controller.cancelar);
 
 // mantido para não quebrar telas antigas.

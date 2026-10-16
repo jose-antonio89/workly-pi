@@ -9,6 +9,12 @@ export const routeDefinitions = [
     protected: false
   },
   {
+    path: '/redefinir-senha',
+    alias: '/pages/redefinir-senha.html',
+    pageFile: 'ResetPasswordPage.jsx',
+    protected: false
+  },
+  {
     path: '/todos-servicos',
     alias: '/pages/todos-servicos.html',
     pageFile: 'AllServicesPage.jsx',

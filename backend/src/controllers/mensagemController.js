@@ -5,7 +5,7 @@ const Usuario = require('../models/Usuario');
 const Servico = require('../models/Servico');
 const Notificacao = require('../models/Notificacao');
 const { sucesso, erro } = require('../utils/apiResponse');
-const { notificarMensagemNova } = require('../utils/notificacaoUtils');
+const { notificarMensagemNova, destinatarioAceita } = require('../utils/notificacaoUtils');
 const { idMongoValido } = require('../utils/requisicaoUtils');
 
 const STATUS_CHAT_ATIVO = [
@@ -51,8 +51,15 @@ async function carregarContratoDoUsuario(contratoId, userId) {
   };
 }
 
+const MENSAGEM_CHAT_ENCERRADO =
+  'Este contrato foi encerrado. O histórico continua disponível, mas não é possível enviar novas mensagens.';
+
+async function contratoAindaAtivo(contratoId) {
+  return Boolean(await Contrato.exists({ _id: contratoId, status: { $in: STATUS_CHAT_ATIVO } }));
+}
+
 // envia uma mensagem no chat de um contrato.
-// O chat fica disponível apenas enquanto o contrato está ativo.
+// Novos envios só enquanto o contrato está ativo; depois de concluído ou cancelado o histórico fica só para leitura.
 // Contratos concluídos, encerrados ou cancelados não entram na central de mensagens.
 exports.enviar = async (req, res) => {
   try {
@@ -69,7 +76,7 @@ exports.enviar = async (req, res) => {
     const contrato = await carregarContratoDoUsuario(contratoId, userId);
     if (!contrato) return erro(res, 403, 'Você não faz parte deste contrato ou ele não existe.');
     if (!STATUS_CHAT_ATIVO.includes(contrato.status)) {
-      return erro(res, 400, 'O chat deste contrato não está mais ativo.');
+      return erro(res, 409, MENSAGEM_CHAT_ENCERRADO);
     }
 
     const mensagem = await Mensagem.create({
@@ -77,6 +84,12 @@ exports.enviar = async (req, res) => {
       remetente: userId,
       texto
     });
+
+    // o contrato pode ter sido encerrado entre a checagem e a gravação: nesse caso a mensagem é desfeita.
+    if (!(await contratoAindaAtivo(contratoId))) {
+      await Mensagem.deleteOne({ _id: mensagem._id });
+      return erro(res, 409, MENSAGEM_CHAT_ENCERRADO);
+    }
 
     // notifica a outra parte do contrato.
     const ehRemetenteCliente = String(contrato.cliente._id) === String(userId);
@@ -154,7 +167,7 @@ exports.resumoPorContrato = async (req, res) => {
   }
 };
 
-// lista todas as mensagens de um contrato em ordem cronológica.
+// lista todas as mensagens de um contrato em ordem cronológica, inclusive de contratos encerrados.
 // ao listar, marca automaticamente as mensagens do outro usuário como lidas.
 // quando abre a conversa de verdade, aí sim as mensagens do outro usuário viram lidas.
 exports.listarPorContrato = async (req, res) => {
@@ -165,9 +178,6 @@ exports.listarPorContrato = async (req, res) => {
 
     const contrato = await carregarContratoDoUsuario(contratoId, userId);
     if (!contrato) return erro(res, 403, 'Você não faz parte deste contrato ou ele não existe.');
-    if (!STATUS_CHAT_ATIVO.includes(contrato.status)) {
-      return erro(res, 400, 'O chat deste contrato não está mais ativo.');
-    }
 
     // marca como lidas as mensagens enviadas pelo outro usuário neste contrato.
     // Depois limpa as notificações dessas mensagens para o sino não ficar preso.
@@ -217,11 +227,15 @@ exports.listarPorContrato = async (req, res) => {
 };
 
 // conta mensagens não lidas do usuário logado em todos os contratos.
-// útil para o badge geral de chat no header.
-// contador geral usado no sininho do topo.
+// com ?contexto=sino a contagem segue a preferência de avisos de mensagens (mesma regra de notificacaoUtils):
+// desligada, o sino recebe 0. Sem o parâmetro, devolve a contagem real, como o chat sempre recebeu.
 exports.contarNaoLidas = async (req, res) => {
   try {
     const userId = usuarioId(req);
+
+    if (req.query.contexto === 'sino' && !(await destinatarioAceita(userId, 'mensagem_nova'))) {
+      return sucesso(res, 200, 'Contagem carregada.', { naoLidas: 0, suprimidoPelaPreferencia: true });
+    }
 
     // busca contratos nos quais o usuário participa.
     const contratos = await Contrato.find({

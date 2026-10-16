@@ -60,15 +60,18 @@ export default function ContractsPage() {
     const timer = setTimeout(() => row.removeAttribute('data-highlight'), 2400);
     return () => clearTimeout(timer);
   }, [focusId, items]);
-  async function action(id, name) {
+  // resolves true when the action was applied, so inline forms know when to clear.
+  async function action(id, name, body) {
     try {
-      await contractAction(id, name);
-      toast('Contrato atualizado');
+      const result = await contractAction(id, name, body);
+      toast(result?.mensagem || 'Contrato atualizado');
       await load();
+      return true;
     } catch (error) {
       toast(error.message);
       // another action changed this contract first: show the current state instead of the stale card.
-      if ([400, 403, 409].includes(error.status)) await load();
+      if ([403, 409].includes(error.status) || (error.status === 400 && !body)) await load();
+      return false;
     }
   }
   async function review(payload) {

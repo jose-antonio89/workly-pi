@@ -1,10 +1,13 @@
 import { apiRequest } from './apiClient.js';
 
 const unreadCount = (response) => Number(response.dados?.naoLidas || response.naoLidas || 0);
+// the bell asks for the "sino" view, which returns 0 when the user turned message alerts off.
+// chat screens keep using their own unread counts.
+const BELL_MESSAGES = '/api/mensagens/nao-lidas?contexto=sino';
 export async function notificationCounts() {
   const [notifications, messages] = await Promise.all([
     apiRequest('/api/notificacoes/nao-lidas').catch(() => ({ dados: { naoLidas: 0 } })),
-    apiRequest('/api/mensagens/nao-lidas').catch(() => ({ dados: { naoLidas: 0 } }))
+    apiRequest(BELL_MESSAGES).catch(() => ({ dados: { naoLidas: 0 } }))
   ]);
   return unreadCount(notifications) + unreadCount(messages);
 }
@@ -13,7 +16,7 @@ export async function notificationList() {
     apiRequest('/api/notificacoes?lida=false&limit=8&excluirMensagens=true').catch(() => ({
       dados: []
     })),
-    apiRequest('/api/mensagens/nao-lidas').catch(() => ({ dados: { naoLidas: 0 } }))
+    apiRequest(BELL_MESSAGES).catch(() => ({ dados: { naoLidas: 0 } }))
   ]);
   return {
     items: (notifications.dados || []).filter((item) => item.tipo !== 'mensagem_nova'),

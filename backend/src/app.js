@@ -12,6 +12,7 @@ const rotasAvaliacao = require('./routes/avaliacaoRoutes');
 const rotasNotificacao = require('./routes/notificacaoRoutes');
 const rotasMensagem = require('./routes/mensagemRoutes');
 const { erro } = require('./utils/apiResponse');
+const { lerLimitePositivo } = require('./utils/limiteConfiguravel');
 
 const app = express();
 
@@ -23,6 +24,29 @@ const limitadorLogin = rateLimit({
   legacyHeaders: false,
   handler: (_req, res) =>
     erro(res, 429, 'Muitas tentativas de login. Tente novamente em 15 minutos.')
+});
+
+// recuperação de senha: limite por IP nas duas rotas e, na solicitação, também por e-mail informado
+// (a chave é o texto enviado, então o limite não revela se a conta existe).
+// RECUPERACAO_SENHA_LIMITE_IP só existe para ajuste operacional; o padrão é 20 por IP em 15 minutos.
+// valores que não sejam inteiro positivo (Infinity, 1e309, 0, -5, 1.5, vazio) ficam no padrão.
+const limiteRecuperacaoIp = lerLimitePositivo(process.env.RECUPERACAO_SENHA_LIMITE_IP, 20);
+const respostaLimiteRecuperacao = (_req, res) =>
+  erro(res, 429, 'Muitas tentativas de recuperação de senha. Tente novamente mais tarde.');
+const limitadorRecuperacaoIp = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: limiteRecuperacaoIp,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: respostaLimiteRecuperacao
+});
+const limitadorRecuperacaoEmail = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: false,
+  legacyHeaders: false,
+  keyGenerator: (req) => `email:${typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : ''}`,
+  handler: respostaLimiteRecuperacao
 });
 
 app.use(cors({ origin: ambiente.frontendUrl === '*' ? true : ambiente.frontendUrl }));
@@ -56,6 +80,11 @@ app.use('/api/autenticacao/login', limitadorLogin);
 app.use('/api/autenticacao/cadastro', limitadorLogin);
 
 app.use('/api/autenticacao/register', limitadorLogin);
+
+// o limite por e-mail lê o corpo, por isso fica depois do express.json acima.
+app.use('/api/autenticacao/recuperar-senha', limitadorRecuperacaoIp, limitadorRecuperacaoEmail);
+
+app.use('/api/autenticacao/redefinir-senha', limitadorRecuperacaoIp);
 
 app.use('/api/autenticacao', rotasAutenticacao);
 

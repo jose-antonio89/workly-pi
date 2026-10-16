@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { access } from 'node:fs/promises';
 import { routeDefinitions, aliasDestination } from '../src/routes/routeDefinitions.js';
 
-test('each of the 17 routes has a unique native path, alias and existing React page', async () => {
-  assert.equal(routeDefinitions.length, 17);
-  assert.equal(new Set(routeDefinitions.map((route) => route.path)).size, 17);
-  assert.equal(new Set(routeDefinitions.map((route) => route.alias)).size, 17);
+test('each of the 18 routes has a unique native path, alias and existing React page', async () => {
+  assert.equal(routeDefinitions.length, 18);
+  assert.equal(new Set(routeDefinitions.map((route) => route.path)).size, 18);
+  assert.equal(new Set(routeDefinitions.map((route) => route.alias)).size, 18);
   for (const route of routeDefinitions) {
     await access(new URL(`../src/pages/${route.pageFile}`, import.meta.url));
   }

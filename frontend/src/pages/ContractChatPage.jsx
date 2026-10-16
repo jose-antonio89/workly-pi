@@ -33,7 +33,9 @@ export default function ContractChatPage() {
     [messageError, setMessageError] = useState(''),
     [sendError, setSendError] = useState(''),
     [text, setText] = useState(''),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [closedByServer, setClosedByServer] = useState(false);
+  const readOnly = Boolean(contract) && (closedByServer || finalStatuses.includes(contract.status));
   const scope = useRef(createRequestScope());
   const sendScope = useRef(createRequestScope());
   const currentId = useRef(id);
@@ -65,6 +67,7 @@ export default function ContractChatPage() {
     setSendError('');
     setText('');
     setBusy(false);
+    setClosedByServer(false);
     (async () => {
       if (!id) {
         setError([
@@ -84,16 +87,11 @@ export default function ContractChatPage() {
           ]);
           return;
         }
-        if (finalStatuses.includes(c.status)) {
-          setError([
-            'Chat indisponível',
-            'O chat fica disponível apenas enquanto o contrato está ativo.'
-          ]);
-          return;
-        }
         setContract(c);
         await loadMessages(controller.signal);
-        if (active) timer = setInterval(() => loadMessages(controller.signal), 30000);
+        // closed contracts are read-only: nothing new can arrive, so there is no polling.
+        if (active && !finalStatuses.includes(c.status))
+          timer = setInterval(() => loadMessages(controller.signal), 30000);
       } catch (error) {
         if (active) setError(['Erro ao carregar', error.message]);
       }
@@ -107,7 +105,7 @@ export default function ContractChatPage() {
     };
   }, [id]);
   async function send(value) {
-    if (!contract || busy) return;
+    if (!contract || busy || readOnly) return;
     const requestId = id,
       isCurrent = sendScope.current.begin();
     setBusy(true);
@@ -118,8 +116,10 @@ export default function ContractChatPage() {
       setText('');
       await loadMessages();
     } catch (error) {
-      if (isCurrent() && currentId.current === requestId)
-        setSendError(error.message || 'Não foi possível enviar a mensagem.');
+      if (!isCurrent() || currentId.current !== requestId) return;
+      setSendError(error.message || 'Não foi possível enviar a mensagem.');
+      // the contract was closed meanwhile: switch the page to read-only.
+      if (error.status === 409) setClosedByServer(true);
     } finally {
       if (isCurrent() && currentId.current === requestId) setBusy(false);
     }
@@ -247,7 +247,19 @@ export default function ContractChatPage() {
                 sendError={sendError}
               />
             )}{' '}
-            {!error && (
+            {!error && readOnly && (
+              <p
+                role="status"
+                className="flex items-start gap-2 border-t border-workly-rule bg-workly-sunken px-5 py-4 text-[0.95rem] text-workly-ink-warm dark:border-white/10 dark:bg-workly-night"
+              >
+                <i aria-hidden="true" className="fas fa-lock mt-1 text-sm text-workly-muted-warm" />
+                <span>
+                  Este contrato foi encerrado. A conversa fica disponível para consulta, mas não é possível enviar novas
+                  mensagens.
+                </span>
+              </p>
+            )}
+            {!error && !readOnly && (
               <MessageCompose direct text={text} setText={setText} busy={busy} onSend={send} />
             )}
           </section>

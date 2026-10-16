@@ -12,8 +12,18 @@ export function createContract(payload) {
 export async function myContracts() {
   return (await apiRequest('/api/contratos/meus')).dados || [];
 }
-export function contractAction(id, action) {
-  return apiRequest(`/api/contratos/${id}/${action}`, { method: 'POST' });
+export function contractAction(id, action, body) {
+  return apiRequest(`/api/contratos/${id}/${action}`, body ? json(body) : { method: 'POST' });
+}
+// value negotiation (valor a combinar) and delivery adjustments.
+export function proposeValue(id, valor) {
+  return contractAction(id, 'propor-valor', { valor });
+}
+export function approveValue(id, valor) {
+  return contractAction(id, 'aprovar-valor', { valor });
+}
+export function requestAdjustment(id, justificativa) {
+  return contractAction(id, 'solicitar-ajuste', { justificativa });
 }
 export function reviewContract(payload) {
   return apiRequest('/api/avaliacoes', json(payload));
@@ -33,8 +43,22 @@ export function contractStatus(status = '') {
     }[status] || String(status).replace('_', ' ')
   );
 }
+// combinar contracts negotiate in the card's panel; until both sides approve a value the work cannot move on.
+export function negotiationOpen(c) {
+  return (
+    c.tipoContratacao === 'combinar' &&
+    !finalStatuses.includes(c.status) &&
+    Boolean(c.negociacao) &&
+    c.negociacao.estado !== 'fechado'
+  );
+}
+const needsAgreement = ['aceitar', 'iniciar', 'entregar', 'confirmar'];
 export function contractActions(c) {
   if (finalStatuses.includes(c.status)) return [];
+  const actions = baseActions(c);
+  return negotiationOpen(c) ? actions.filter(([action]) => !needsAgreement.includes(action)) : actions;
+}
+function baseActions(c) {
   if (c.papel === 'freelancer') {
     return (
       {
@@ -65,6 +89,10 @@ export function contractActions(c) {
     : [];
 }
 export function contractPrice(c) {
+  if (c.tipoContratacao === 'combinar' && c.negociacao?.estado === 'pendente_acordo')
+    return ['fa-comments-dollar', 'Valor pendente de acordo'];
+  if (c.negociacao?.estado === 'aguardando_cliente' && c.precoProposto)
+    return ['fa-hand-holding-dollar', `Contraproposta: ${formatCurrency(c.precoProposto)}`];
   if (c.tipoContratacao === 'combinar' && !c.preco && !c.precoProposto && !c.preco_proposto)
     return ['fa-comments-dollar', 'Valor a combinar'];
   if (c.precoProposto || c.preco_proposto)
@@ -78,6 +106,8 @@ export function canReview(c) {
   return c.papel === 'cliente' && c.status === 'concluido' && !c.jaAvaliado && !c.ja_avaliado;
 }
 export function contractFeedback(c) {
+  // the negotiation panel explains whose turn it is.
+  if (negotiationOpen(c)) return null;
   if (c.papel === 'cliente' && (c.status === 'encerrado' || c.jaAvaliado || c.ja_avaliado))
     return ['fa-circle-check', 'Avaliação enviada. Contrato encerrado.', true];
   if (c.papel === 'freelancer' && c.status === 'encerrado')
@@ -95,4 +125,16 @@ export function contractFeedback(c) {
   if (c.papel === 'cliente' && c.status === 'proposta_pendente')
     return ['fa-clock', 'Aguardando resposta do freelancer.', false];
   return null;
+}
+const historyVerbs = {
+  proposta: 'propôs',
+  contraproposta: 'fez contraproposta de',
+  aceite: 'aprovou',
+  entrega: 'enviou a entrega',
+  ajuste_solicitado: 'pediu ajustes'
+};
+export function historyEntry(event, papel) {
+  const who = event.papel === papel ? 'Você' : event.papel === 'cliente' ? 'Cliente' : 'Freelancer';
+  const value = event.valor ? ` ${formatCurrency(event.valor)}` : '';
+  return `${who} ${historyVerbs[event.tipo] || event.tipo}${value}`;
 }

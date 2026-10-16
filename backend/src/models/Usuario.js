@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 const { normalizarCpf, validarCpf } = require('../utils/cpfUtils');
 
+function ocultarCamposInternos(_doc, ret) {
+  delete ret.redefinicaoSenha;
+  return ret;
+}
+
 const usuarioSchema = new mongoose.Schema(
   {
     nome: { type: String, required: true, trim: true },
@@ -52,10 +57,24 @@ const usuarioSchema = new mongoose.Schema(
     // fase 2: exclusão confirmada, sem volta. A conta fica encerrada até a anonimização terminar.
     exclusaoConfirmadaEm: { type: Date, default: null },
     avaliacaoMedia: { type: Number, default: 0 },
-    totalAvaliacoes: { type: Number, default: 0 }
+    totalAvaliacoes: { type: Number, default: 0 },
+    // recuperação de senha: só o hash SHA-256 do token fica salvo, com validade curta e uso único.
+    // uma nova solicitação substitui o token anterior; usar o token remove o campo.
+    // nunca sai em consultas comuns (select: false) nem na serialização (transform abaixo);
+    // o fluxo de redefinição filtra por ele sem precisar lê-lo.
+    redefinicaoSenha: {
+      hash: { type: String, default: undefined, select: false },
+      expiraEm: { type: Date, default: undefined, select: false }
+    }
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { transform: ocultarCamposInternos },
+    toObject: { transform: ocultarCamposInternos }
+  }
 );
+
+usuarioSchema.index({ 'redefinicaoSenha.hash': 1 }, { sparse: true });
 
 usuarioSchema.index({ tipoConta: 1, localizacao: 1 });
 usuarioSchema.index({ tipoConta: 1, disponibilidade: 1 });

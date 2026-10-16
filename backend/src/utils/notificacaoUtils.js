@@ -1,4 +1,5 @@
 const Notificacao = require('../models/Notificacao');
+const Usuario = require('../models/Usuario');
 
 // textos de cada tipo de notificação
 // centralizado aqui para não espalhar strings pelo código de negócio
@@ -31,6 +32,24 @@ const TEMPLATES = {
     titulo: 'Contrato cancelado',
     mensagem: `${quemCancelou} cancelou o contrato de "${nomeServico}".`
   }),
+  proposta_valor: (nomeServico, ehContraproposta) => ({
+    titulo: ehContraproposta ? 'Contraproposta recebida' : 'Nova proposta de valor',
+    mensagem: ehContraproposta
+      ? `O freelancer enviou uma contraproposta para "${nomeServico}". Aprove ou responda em seus contratos.`
+      : `O cliente enviou uma proposta de valor para "${nomeServico}". Acesse seus contratos para responder.`
+  }),
+  valor_aprovado: (nomeServico) => ({
+    titulo: 'Valor aprovado',
+    mensagem: `O cliente aprovou o valor de "${nomeServico}". O acordo está fechado.`
+  }),
+  entrega_confirmada: (nomeServico) => ({
+    titulo: 'Entrega confirmada',
+    mensagem: `O cliente confirmou o recebimento de "${nomeServico}". O contrato foi concluído.`
+  }),
+  ajuste_solicitado: (nomeServico) => ({
+    titulo: 'Ajuste solicitado',
+    mensagem: `O cliente pediu ajustes na entrega de "${nomeServico}". Veja a justificativa em seus contratos.`
+  }),
   avaliacao_recebida: (nomeCliente, nota) => ({
     titulo: 'Você recebeu uma avaliação!',
     mensagem: `${nomeCliente} avaliou seu serviço com nota ${nota}.`
@@ -41,10 +60,48 @@ const TEMPLATES = {
   })
 };
 
+// REGRA DE PREFERÊNCIAS (único lugar onde ela é definida):
+// - tipos essenciais são sempre enviados, mesmo com preferências desligadas. São os avisos de transação do
+//   contrato (aceite, acordo de valor, início, entrega, confirmação, ajuste, recusa, cancelamento) e a avaliação
+//   recebida: quem participa de um contrato precisa saber quando ele muda. Segurança e conta entram nesta lista
+//   quando ganharem notificações próprias.
+// - os demais tipos só são enviados se a preferência correspondente do destinatário estiver ligada.
+//   Hoje só "notificacoesPropostas" (Novas propostas e mensagens) tem correspondência clara.
+// - "notificacoesEmail" e "notificacoesMarketing" não controlam nada: não há envio de e-mail nem marketing.
+// Todo tipo aceito pelo model Notificacao precisa estar em exatamente uma das duas listas (verificado em teste).
+const TIPOS_ESSENCIAIS = Object.freeze([
+  'proposta_aceita',
+  'proposta_recusada',
+  'proposta_valor',
+  'valor_aprovado',
+  'trabalho_iniciado',
+  'entrega_realizada',
+  'entrega_confirmada',
+  'ajuste_solicitado',
+  'contrato_cancelado',
+  'avaliacao_recebida'
+]);
+const PREFERENCIA_POR_TIPO = Object.freeze({
+  contrato_novo: 'notificacoesPropostas',
+  proposta_nova: 'notificacoesPropostas',
+  mensagem_nova: 'notificacoesPropostas'
+});
+
+// confere a preferência no momento do envio; preferência ausente vale como ligada (padrão do model).
+async function destinatarioAceita(destinatario, tipo) {
+  if (TIPOS_ESSENCIAIS.includes(tipo)) return true;
+  const preferencia = PREFERENCIA_POR_TIPO[tipo];
+  if (!preferencia) return true;
+  const usuario = await Usuario.findById(destinatario).select(preferencia).lean();
+  return Boolean(usuario) && usuario[preferencia] !== false;
+}
+
 /**
  * Cria uma notificação no banco de forma segura.
  * Nunca lança exceção — se falhar, apenas loga. Notificação é funcionalidade
  * auxiliar e nunca deve impedir a ação principal de completar.
+ * Os controllers só chamam isto depois de gravar a ação que gerou o aviso.
+ * Devolve a notificação criada, ou null se foi suprimida pela preferência ou falhou.
  */
 
 // função central pra criar notificação.
@@ -58,7 +115,8 @@ async function criarNotificacao({
   tipoReferencia = null
 }) {
   try {
-    await Notificacao.create({
+    if (!(await destinatarioAceita(destinatario, tipo))) return null;
+    return await Notificacao.create({
       destinatario,
       tipo,
       titulo,
@@ -68,6 +126,7 @@ async function criarNotificacao({
     });
   } catch (err) {
     console.error('[notificacaoUtils] Falha ao criar notificação:', err.message);
+    return null;
   }
 }
 
@@ -138,6 +197,46 @@ async function notificarContratoCancelado(destinatarioId, contratoId, nomeServic
   });
 }
 
+async function notificarPropostaValor(destinatarioId, contratoId, nomeServico, ehContraproposta) {
+  await criarNotificacao({
+    destinatario: destinatarioId,
+    tipo: 'proposta_valor',
+    ...TEMPLATES.proposta_valor(nomeServico, ehContraproposta),
+    referenciaId: contratoId,
+    tipoReferencia: 'contrato'
+  });
+}
+
+async function notificarValorAprovado(freelancerId, contratoId, nomeServico) {
+  await criarNotificacao({
+    destinatario: freelancerId,
+    tipo: 'valor_aprovado',
+    ...TEMPLATES.valor_aprovado(nomeServico),
+    referenciaId: contratoId,
+    tipoReferencia: 'contrato'
+  });
+}
+
+async function notificarEntregaConfirmada(freelancerId, contratoId, nomeServico) {
+  await criarNotificacao({
+    destinatario: freelancerId,
+    tipo: 'entrega_confirmada',
+    ...TEMPLATES.entrega_confirmada(nomeServico),
+    referenciaId: contratoId,
+    tipoReferencia: 'contrato'
+  });
+}
+
+async function notificarAjusteSolicitado(freelancerId, contratoId, nomeServico) {
+  await criarNotificacao({
+    destinatario: freelancerId,
+    tipo: 'ajuste_solicitado',
+    ...TEMPLATES.ajuste_solicitado(nomeServico),
+    referenciaId: contratoId,
+    tipoReferencia: 'contrato'
+  });
+}
+
 async function notificarAvaliacaoRecebida(freelancerId, avaliacaoId, nomeCliente, nota) {
   await criarNotificacao({
     destinatario: freelancerId,
@@ -160,12 +259,20 @@ async function notificarMensagemNova(destinatarioId, mensagemId, nomeRemetente, 
 
 module.exports = {
   TEMPLATES,
+  TIPOS_ESSENCIAIS,
+  PREFERENCIA_POR_TIPO,
+  destinatarioAceita,
+  criarNotificacao,
   notificarContratoNovo,
   notificarPropostaAceita,
   notificarPropostaRecusada,
   notificarTrabalhoIniciado,
   notificarEntregaRealizada,
   notificarContratoCancelado,
+  notificarPropostaValor,
+  notificarValorAprovado,
+  notificarEntregaConfirmada,
+  notificarAjusteSolicitado,
   notificarAvaliacaoRecebida,
   notificarMensagemNova
 };

@@ -96,22 +96,31 @@ export default function ProfileSettings({ user, reload, onPhoto }) {
       </FormField>
     );
   }
-  function toggle(key, title, description) {
+  // unavailable: the channel is not implemented yet, so the switch is shown off and cannot be changed.
+  function toggle(key, title, description, unavailable = false) {
     return (
       <label
         key={key}
-        className="flex min-w-0 items-center justify-between gap-5 border-b border-workly-rule py-6"
+        className={`flex min-w-0 items-center justify-between gap-5 border-b border-workly-rule py-6 ${unavailable ? 'cursor-not-allowed' : ''}`}
       >
-        <span className="min-w-0">
-          <strong className="block">{title}</strong>
+        <span className={`min-w-0 ${unavailable ? 'opacity-70' : ''}`}>
+          <strong className="block">
+            {title}
+            {unavailable && (
+              <span className="ml-2 inline-block rounded-full bg-workly-sunken px-2 py-0.5 align-middle text-xs font-semibold text-workly-muted-warm dark:bg-white/10 dark:text-[#9aa59f]">
+                Indisponível no momento
+              </span>
+            )}
+          </strong>
           <small className="mt-1 block text-sm leading-relaxed text-workly-muted-warm">{description}</small>
         </span>
         <input
           type="checkbox"
-          aria-label={title}
-          checked={Boolean(values[key])}
+          aria-label={unavailable ? `${title} (indisponível no momento)` : title}
+          checked={unavailable ? false : Boolean(values[key])}
+          disabled={unavailable}
           onChange={(event) => set(key, event.target.checked)}
-          className="h-[18px] w-[18px] shrink-0 accent-workly-primary focus-visible:outline-2 focus-visible:outline-workly-primary"
+          className="h-[18px] w-[18px] shrink-0 accent-workly-primary focus-visible:outline-2 focus-visible:outline-workly-primary disabled:cursor-not-allowed disabled:opacity-50"
         />
       </label>
     );
@@ -208,11 +217,8 @@ export default function ProfileSettings({ user, reload, onPhoto }) {
                 ? group(['metodoPagamento', 'chavePix', 'banco'])
                 : section === 'preferences'
                   ? { doisFatores: Boolean(values.doisFatores) }
-                  : Object.fromEntries(
-                      ['notificacoesEmail', 'notificacoesPropostas', 'notificacoesMarketing'].map(
-                        (key) => [key, Boolean(values[key])]
-                      )
-                    );
+                  : // only the in-app preference works today; e-mail and marketing keep their stored values.
+                    { notificacoesPropostas: Boolean(values.notificacoesPropostas) };
         result = await updateProfile(payload);
       }
       if (section !== 'security' && section !== 'profile') await reload();
@@ -528,20 +534,32 @@ export default function ProfileSettings({ user, reload, onPhoto }) {
             )}
             {key === 'notification' && (
               <form onSubmit={(event) => submit(event, key)}>
-                {toggle(
-                  'notificacoesEmail',
-                  'Notificações por email',
-                  'Receber avisos importantes da conta.'
-                )}
+                <h3 className="mt-2 text-sm font-semibold tracking-wide text-workly-muted-warm uppercase">
+                  Avisos na plataforma
+                </h3>
                 {toggle(
                   'notificacoesPropostas',
                   'Novas propostas e mensagens',
-                  'Avisos quando clientes demonstrarem interesse.'
+                  'Avisos no sino quando chegarem pedidos, propostas ou mensagens novas.'
+                )}
+                <p className="mt-3 text-sm leading-relaxed text-workly-muted-warm">
+                  Avisos sobre o andamento dos seus contratos (aceite, valor combinado, entrega, ajustes,
+                  cancelamento e avaliações) chegam sempre, porque fazem parte da negociação.
+                </p>
+                <h3 className="mt-8 text-sm font-semibold tracking-wide text-workly-muted-warm uppercase">
+                  Outros canais
+                </h3>
+                {toggle(
+                  'notificacoesEmail',
+                  'Notificações por e-mail',
+                  'A Workly ainda não envia e-mails. Esta opção será liberada quando o envio estiver disponível.',
+                  true
                 )}
                 {toggle(
                   'notificacoesMarketing',
                   'Novidades e marketing',
-                  'Receber dicas, promoções e atualizações da Workly.'
+                  'A Workly ainda não envia comunicações de marketing.',
+                  true
                 )}
                 {actions('Salvar notificações', key)}
               </form>

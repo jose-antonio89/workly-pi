@@ -31,6 +31,8 @@ function setup(t, status) {
     cliente: 'client',
     freelancer: 'freelancer',
     servico: { nome: 'Serviço' },
+    tipoContratacao: 'fixo',
+    preco: 100,
     status,
     save: async () => {}
   };

@@ -131,8 +131,14 @@ test('exclusão anonimiza, encerra sessões, retira serviços e preserva o hist�
   assert.equal(await Avaliacao.countDocuments({ freelancer: freelancer._id }), 1);
   assert.equal(await Mensagem.countDocuments({ contrato: concluido._id }), 1);
   assert.equal(await Contrato.countDocuments({ freelancer: freelancer._id }), 2);
+  // contrato encerrado: o histórico do chat continua legível, mas novos envios são recusados.
   const chat = await amb.chamar('GET', `/api/mensagens/contrato/${concluido._id}`, cliente);
-  assert.equal(chat.status, 400, 'chat de contrato encerrado responde de forma controlada');
+  assert.equal(chat.status, 200, 'chat de contrato encerrado continua legível');
+  assert.equal(chat.dados.dados.length, 1);
+  assert.equal(chat.dados.dados[0].remetente.nome, 'Usuário removido');
+  const envio = await amb.chamar('POST', '/api/mensagens', cliente, { contratoId: String(concluido._id), texto: 'oi' });
+  assert.equal(envio.status, 409);
+  assert.equal(await Mensagem.countDocuments({ contrato: concluido._id }), 1);
   assert.equal((await amb.chamar('GET', '/api/usuarios/perfil', cliente)).status, 200);
 
   // e-mail e CPF reais ficam livres para um novo cadastro
@@ -212,7 +218,8 @@ test('referências antigas ausentes produzem respostas controladas, nunca 500', 
     assert.ok(resposta.status < 500, `${metodo} ${rota} -> ${resposta.status}`);
   }
   const chat = await amb.chamar('GET', `/api/mensagens/contrato/${concluidoId}`, cliente);
-  assert.equal(chat.status, 400);
+  assert.equal(chat.status, 200);
+  assert.deepEqual(chat.dados.dados, []);
   const meus = await amb.chamar('GET', '/api/contratos/meus', cliente);
   const legado = meus.dados.dados.find((c) => c.idContrato === String(concluidoId));
   assert.equal(legado.nomeServico, 'Serviço removido');

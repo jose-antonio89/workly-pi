@@ -44,13 +44,16 @@ pedido pode ser aceito; nesse caso a conclusão o cancela.
 
 ## Backups e restauração
 
-- `npm run backup` usa `mongodump` e grava uma cópia completa em `backend/backups/`. Essa cópia contém os dados das
-  contas **como estavam no momento do backup**.
-- `npm run restore` usa `mongorestore --drop`: substitui as coleções pelo conteúdo do backup.
-- **Restaurar um backup anterior a uma exclusão traz de volta os dados pessoais que foram anonimizados**, além de
-  contratos e serviços no estado antigo. Também pode trazer índices antigos: na inicialização a API verifica o
-  índice de contratos e bloqueia novos pedidos se ele não estiver correto (veja `indice-contratos.md`).
-- Os scripts de backup e restauração **ainda precisam de revisão**: não registram exclusões feitas depois do backup,
-  não reaplicam anonimizações após a restauração e não definem por quanto tempo os backups devem ser guardados.
-  Até essa revisão, restaurações devem ser tratadas como excepcionais e as exclusões posteriores ao backup precisam
-  ser refeitas manualmente.
+Guia completo: [`backup-e-restore.md`](backup-e-restore.md).
+
+- `npm run backup` usa `mongodump` e grava uma cópia completa (base e uploads) em `backend/backups/`. Essa cópia
+  contém os dados das contas **como estavam no momento do backup**.
+- **Restaurar um backup anterior a uma exclusão traz de volta os dados pessoais que foram anonimizados** (e as fotos,
+  se os uploads forem restaurados), além de contratos e serviços no estado antigo. Restaurar **não preserva**
+  exclusões posteriores.
+- Por isso o `npm run restore` recusa por padrão qualquer restauração que possa reintroduzir contas excluídas depois
+  do backup, inclusive quando não há informação suficiente para decidir. A exceção exige duas confirmações
+  explícitas. Nesse caso, as exclusões posteriores precisam ser refeitas manualmente.
+- O restore também pode trazer índices antigos: na inicialização a API verifica o índice de contratos e bloqueia
+  novos pedidos se ele não estiver correto (veja `indice-contratos.md`).
+- Por quanto tempo os backups devem ser guardados ainda não está definido.
