@@ -138,7 +138,7 @@ function relatarProblemaIndice(resultado, registrar = console.error) {
   if (!resultado || resultado.instalado) return;
   registrar(
     `ATENÇÃO: proteção contra contratos duplicados indisponível (${resultado.motivo}). ` +
-      'Novos pedidos e propostas ficarão bloqueados. Veja backend/docs/indice-contratos.md.'
+      'Novos pedidos e propostas ficarão bloqueados. Corrija os conflitos e execute node src/scripts/indices.js.'
   );
   for (const item of resultado.duplicados || []) {
     registrar(`  cliente ${item._id.cliente} / serviço ${item._id.servico}: ${item.contratos.join(', ')}`);

@@ -1,5 +1,5 @@
 // Backup e restore do MongoDB com as ferramentas oficiais (mongodump/mongorestore) e cópia dos uploads.
-// Guia de uso, riscos e recuperação de falhas: backend/docs/backup-e-restore.md.
+// Backup e restauração com validação, confirmação e preservação de cópias anteriores.
 //
 // Regras principais:
 // - a URI (com usuário e senha) nunca vai nos argumentos dos processos nem nos logs: vai num arquivo YAML
@@ -772,7 +772,7 @@ async function restaurarBackup(opcoes = {}) {
     if (motivos.length && !reintroducaoPermitida) {
       throw new ErroBackup(
         `Restore recusado: ele pode trazer de volta dados de contas excluídas (${motivos.join('; ')}). ` +
-          'Veja backend/docs/backup-e-restore.md antes de usar --permitir-reintroducao-excluidos.'
+          'A exceção --permitir-reintroducao-excluidos pode restaurar dados de contas já excluídas.'
       );
     }
     if (motivos.length) registrarErro(`ATENÇÃO: restaurando mesmo assim (${motivos.join('; ')}).`);

@@ -1,5 +1,5 @@
 // npm run backup [-- --saida <pasta>]
-// Gera um backup da base de MONGO_URI com mongodump e copia backend/uploads. Veja backend/docs/backup-e-restore.md.
+// Gera um backup da base de MONGO_URI com mongodump e copia backend/uploads.
 const { gerarBackup, mascarar, segredosDa } = require('./backupRestore');
 
 function lerArgumentos(argv) {
