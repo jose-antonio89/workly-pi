@@ -2,28 +2,33 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import CatalogShell from '../components/catalog/CatalogShell';
 import ServiceCard from '../components/catalog/ServiceCard';
+import Pagination from '../components/catalog/Pagination';
 import { LoadingState, StatePanel } from '../components/ui/Feedback';
 import { buttonStyles } from '../components/ui/Button';
 import { assignCovers } from '../components/home/offices';
-import { categories, categoryServices } from '../services/catalogService';
+import { categories, categoryServicePage } from '../services/catalogService';
+import { servicePageNumber } from '../services/serviceSearchService';
 
 export default function CategoryPage() {
-  const [params] = useSearchParams(),
-    id = params.get('id');
+  const [params, setParams] = useSearchParams(),
+    id = params.get('id'),
+    page = servicePageNumber(params.get('page'));
   const category = categories.find((item) => item.id === id);
   const [services, setServices] = useState(null),
+    [pagination, setPagination] = useState(null),
     [error, setError] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     setServices(null);
+    setPagination(null);
     setError(false);
-    categoryServices(id, { signal: controller.signal })
-      .then(setServices)
+    categoryServicePage(id, page, { signal: controller.signal })
+      .then(({ services, pagination }) => { setServices(services); setPagination(pagination); })
       .catch((err) => {
         if (err.name !== 'AbortError') setError(true);
       });
     return () => controller.abort();
-  }, [id]);
+  }, [id, page]);
 
   return (
     <CatalogShell title={category ? `Workly - ${category.label}` : 'Workly - Categoria'}>
@@ -48,7 +53,7 @@ export default function CategoryPage() {
           <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2">
             {services && !error && (
               <span className="text-sm text-workly-muted-warm tabular-nums">
-                {services.length} {services.length === 1 ? 'serviço disponível' : 'serviços disponíveis'}
+                {pagination?.total ?? services.length} {(pagination?.total ?? services.length) === 1 ? 'serviço disponível' : 'serviços disponíveis'}
               </span>
             )}
             <Link
@@ -94,6 +99,11 @@ export default function CategoryPage() {
             ))
           )}
         </div>
+        {services && !error && <Pagination pagination={pagination} onPage={(nextPage) => {
+          const next = new URLSearchParams(params);
+          next.set('page', String(nextPage));
+          setParams(next);
+        }} />}
       </section>
     </CatalogShell>
   );

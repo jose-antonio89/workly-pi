@@ -89,4 +89,6 @@ test('client-side password check mirrors the server rule', () => {
   assert.match(newPasswordProblem('x'.repeat(129), 'x'.repeat(129)), /no máximo 128/);
   assert.match(newPasswordProblem('senha-boa-1', 'outra'), /não confere/);
   assert.equal(newPasswordProblem('senha-boa-1', 'senha-boa-1'), '');
+  assert.match(newPasswordProblem('á'.repeat(37), 'á'.repeat(37)), /72 bytes/);
+  assert.equal(newPasswordProblem('á'.repeat(36), 'á'.repeat(36)), '');
 });

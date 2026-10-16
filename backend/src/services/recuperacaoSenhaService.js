@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const Usuario = require('../models/Usuario');
 const ambiente = require('../config/ambiente');
+const { motivoNovaSenhaInvalida } = require('../utils/senhaUtils');
 
 // Recuperação de senha local.
 // - O token tem 32 bytes aleatórios; o banco guarda só o SHA-256 dele, com validade de 30 minutos.
@@ -51,11 +52,10 @@ function normalizarEmail(email) {
   return typeof email === 'string' ? email.trim().toLowerCase() : '';
 }
 
-// mesma regra da troca de senha do perfil: texto de 8 a 128 caracteres.
+// Mesma regra da troca/cadastro: pelo menos oito caracteres, sem truncar os 72 bytes do bcrypt.
 function motivoSenhaInvalida(senha, confirmacao) {
-  if (typeof senha !== 'string' || !senha) return 'Informe a nova senha.';
-  if (senha.length < 8) return 'A nova senha deve ter pelo menos 8 caracteres.';
-  if (senha.length > 128) return 'A nova senha deve ter no máximo 128 caracteres.';
+  const motivo = motivoNovaSenhaInvalida(senha);
+  if (motivo) return motivo;
   if (confirmacao !== undefined && confirmacao !== senha) return 'A confirmação da senha não confere.';
   return null;
 }

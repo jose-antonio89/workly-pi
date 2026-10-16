@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import FeaturedCard from '../home/FeaturedCard';
 import { officeFor } from '../home/offices';
+import Button from '../ui/Button';
 
 // Catalog cards share the home anatomy. Lists pass `cover` from assignCovers so
 // neighbours differ; single cards fall back to a stable pick from the service id.
@@ -16,7 +17,7 @@ function stableCover(service) {
   return office.covers[sum % office.covers.length];
 }
 
-export default function ServiceCard({ service, owner = false, cover, feature = false }) {
+export default function ServiceCard({ service, owner = false, cover, feature = false, onRemove, removing = false }) {
   return (
     <FeaturedCard
       service={service}
@@ -24,13 +25,18 @@ export default function ServiceCard({ service, owner = false, cover, feature = f
       categoryCover={cover || stableCover(service)}
       footer={
         owner && (
+          <div className="relative z-[1] mt-4 grid gap-2">
           <Link
             to={`/editar-servico?id=${service.idServico}`}
-            className="relative z-[1] mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-workly-rule font-semibold text-workly-ink-warm transition-colors hover:border-workly-forest/40 hover:text-workly-forest dark:border-white/15 dark:text-[#ecebe5]"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-workly-rule font-semibold text-workly-ink-warm transition-colors hover:border-workly-forest/40 hover:text-workly-forest dark:border-white/15 dark:text-[#ecebe5]"
           >
             <i aria-hidden="true" className="fas fa-pen text-sm" />
             Editar serviço
           </Link>
+          {onRemove && <Button variant="danger" disabled={removing} onClick={() => onRemove(service)} aria-label={`Remover anúncio ${service.nome}`}>
+            <i aria-hidden="true" className="fas fa-trash-can text-sm" /> Remover anúncio
+          </Button>}
+          </div>
         )
       }
     />

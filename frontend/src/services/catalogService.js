@@ -146,6 +146,13 @@ export async function categoryServices(id, options = {}) {
   const response = await apiRequest(`/api/servicos/categoria/${id}`, options);
   return (response.dados || []).map(normalizeService);
 }
+export function servicePagePayload(response) {
+  const services = (response.dados || []).map(normalizeService);
+  return { services, pagination: response.pagination || { page: 1, limit: 24, total: services.length, totalPages: 1 } };
+}
+export async function categoryServicePage(id, page = 1, options = {}) {
+  return servicePagePayload(await apiRequest(`/api/servicos/categoria/${id}?page=${page}&limit=24`, options));
+}
 export async function serviceDetail(id, options = {}) {
   const response = await apiRequest(`/api/servicos/${id}`, options);
   const raw = response.dados || response;

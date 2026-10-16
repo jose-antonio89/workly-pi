@@ -95,6 +95,10 @@ exports.criar = async (req, res) => {
       return erro(res, 400, 'Categoria inválida.');
     }
 
+    if (resultado.erro === 'conta_indisponivel') {
+      if (req.file) removerArquivoSeExistir(`/uploads/servicos/${req.file.filename}`);
+      return erro(res, 409, 'Esta conta não está disponível para publicar serviços.');
+    }
     criacaoConcluida = true;
     const servicoComResumo = await servicoService.buscarPorId(resultado.servico._id);
     return sucesso(res, 201, 'Serviço criado com sucesso!', mapServico(req, servicoComResumo));
@@ -201,6 +205,7 @@ exports.remover = async (req, res) => {
     const servico = await carregarServicoDoFreelancer(req, res);
     if (!servico) return;
     const resultado = await servicoService.remover(servico);
+    if (resultado.indisponivel) return erro(res, 409, 'Este anúncio já foi alterado ou está sendo retirado. Atualize a página.');
     if (resultado.contratosAtivos)
       return erro(res, 400, 'Não é possível remover um serviço com contratos ativos.');
     // a imagem fica: contratos e avaliações antigos ainda exibem o serviço retirado.

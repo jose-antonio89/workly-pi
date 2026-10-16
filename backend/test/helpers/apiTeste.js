@@ -70,7 +70,7 @@ async function iniciarAmbiente(nome) {
     await mongoose.connection.dropDatabase();
     await mongoose.disconnect();
   }
-  return { mongoose, criarUsuario, token, chamar, encerrar };
+  return { base, mongoose, criarUsuario, token, chamar, encerrar };
 }
 
 module.exports = { iniciarAmbiente, cpfValido };

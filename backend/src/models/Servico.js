@@ -13,7 +13,9 @@ const servicoSchema = new mongoose.Schema(
     freelancer: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
     // exclusão lógica: sai do catálogo e da contratação, mas segue disponível para contratos e avaliações.
     removido: { type: Boolean, default: false },
-    removidoEm: { type: Date, default: null }
+    removidoEm: { type: Date, default: null },
+    // A retirada bloqueia novas contratações antes de conferir os contratos existentes.
+    removendoDesde: { type: Date, default: null }
   },
   { timestamps: true }
 );

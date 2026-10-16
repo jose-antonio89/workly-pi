@@ -14,3 +14,6 @@ export function saveService(body, id) {
     body
   });
 }
+export function removeService(id) {
+  return apiRequest(`/api/servicos/${id}`, { method: 'DELETE' });
+}

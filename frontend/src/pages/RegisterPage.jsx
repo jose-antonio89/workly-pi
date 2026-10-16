@@ -40,7 +40,7 @@ export default function RegisterPage() {
     setStates(errors);
     if (
       Object.values(errors).some(Boolean) ||
-      form.elements.senha.value.trim() !== form.elements.confirmar_senha.value.trim() ||
+      form.elements.senha.value !== form.elements.confirmar_senha.value ||
       !form.elements.termos.checked
     ) {
       await showAuthAlert({

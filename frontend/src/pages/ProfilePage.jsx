@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { assignCovers } from '../components/home/offices';
 import { Link } from 'react-router';
 import CatalogShell from '../components/catalog/CatalogShell';
@@ -11,12 +11,15 @@ import { LoadingState, EmptyState, ErrorState } from '../components/ui/Feedback'
 import { readProfile } from '../services/profileService';
 import { defaultProfileImage } from '../services/catalogService';
 import { showAuthAlert } from '../components/auth/authPresentation';
+import { removeService } from '../services/serviceEditorService';
 
 export default function ProfilePage() {
   const [data, setData] = useState(null),
     [error, setError] = useState(''),
     [tab, setTab] = useState('Dashboard'),
-    [photo, setPhoto] = useState(false);
+    [photo, setPhoto] = useState(false),
+    [removing, setRemoving] = useState(false);
+  const removalInProgress = useRef(false);
   const reload = useCallback(async () => {
     try {
       setData(await readProfile());
@@ -34,6 +37,32 @@ export default function ProfilePage() {
   useEffect(() => {
     reload();
   }, [reload]);
+  async function removeAnnouncement(service) {
+    if (removalInProgress.current) return;
+    removalInProgress.current = true;
+    setRemoving(true);
+    try {
+      const confirmation = await showAuthAlert({
+        icon: 'warning',
+        title: 'Remover anúncio?',
+        text: 'Ele sairá do catálogo. Contratos e avaliações anteriores serão preservados. Anúncios com contratos ativos não podem ser removidos.',
+        danger: true,
+        confirmText: 'Remover anúncio',
+        cancelText: 'Cancelar',
+        onConfirm: async () => {
+          try { await removeService(service.idServico); }
+          catch (error) { return error.message || 'Não foi possível remover o anúncio.'; }
+        }
+      });
+      if (confirmation.isConfirmed) {
+        await reload();
+        await showAuthAlert({ icon: 'success', title: 'Anúncio removido', text: 'O anúncio não aparece mais no catálogo.' });
+      }
+    } finally {
+      removalInProgress.current = false;
+      setRemoving(false);
+    }
+  }
   const rating = Number(data?.reviewSummary.mediaFreelancer || 0),
     total = Number(data?.reviewSummary.total ?? data?.reviews.length ?? 0),
     formatRating = (value) =>
@@ -103,7 +132,7 @@ export default function ProfilePage() {
               <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-x-6 gap-y-10">
                 {data.services.length ? (
                   data.services.map((service, index) => (
-                    <ServiceCard key={service.idServico} service={service} cover={assignCovers(data.services)[index]} owner />
+                    <ServiceCard key={service.idServico} service={service} cover={assignCovers(data.services)[index]} owner onRemove={removeAnnouncement} removing={removing} />
                   ))
                 ) : (
                   <EmptyState className="py-5 text-center">

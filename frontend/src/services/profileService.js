@@ -1,6 +1,7 @@
 import { apiRequest } from './apiClient.js';
 import { normalizarUsuario, salvarSessao } from './authService.js';
 import { normalizeService } from './catalogService.js';
+import { newPasswordProblem } from './passwordValidation.js';
 
 export function profilePayload(response) {
   const value = response.dados || response;
@@ -34,7 +35,11 @@ async function mutate(path, method, data) {
 }
 export const updateProfile = (data) => mutate('/api/usuarios/perfil', 'PUT', data);
 export const updateAccountType = (data) => mutate('/api/usuarios/tipo-conta', 'PATCH', data);
-export const updatePassword = (data) => mutate('/api/usuarios/perfil/senha', 'PUT', data);
+export function updatePassword(data) {
+  const problem = newPasswordProblem(data.novaSenha, data.confirmarSenha);
+  if (problem) return Promise.reject(new Error(problem));
+  return mutate('/api/usuarios/perfil/senha', 'PUT', data);
+}
 export const deleteAccount = (senhaAtual) =>
   apiRequest('/api/usuarios/perfil', {
     method: 'DELETE',

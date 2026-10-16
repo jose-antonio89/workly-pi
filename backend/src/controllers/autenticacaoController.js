@@ -6,6 +6,7 @@ const { sucesso, erro } = require('../utils/apiResponse');
 const { obterCampo, normalizarTipoConta } = require('../utils/requisicaoUtils');
 const { normalizarCpf, motivoCpfInvalido } = require('../utils/cpfUtils');
 const recuperacaoSenha = require('../services/recuperacaoSenhaService');
+const { motivoNovaSenhaInvalida } = require('../utils/senhaUtils');
 
 // regex simples para e-mail — valida formato básico sem consulta externa.
 const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -29,9 +30,8 @@ exports.cadastrar = async (req, res) => {
       return erro(res, 400, 'Informe um endereço de e-mail válido.');
     }
 
-    if (String(senha).length < 8) {
-      return erro(res, 400, 'A senha deve ter pelo menos 8 caracteres.');
-    }
+    const erroSenha = motivoNovaSenhaInvalida(senha);
+    if (erroSenha) return erro(res, 400, erroSenha);
 
     const cpfNormalizado = normalizarCpf(cpf);
     const erroCpf = motivoCpfInvalido(cpfNormalizado);

@@ -4,10 +4,12 @@ import {
   readServiceFilters,
   serviceSearchParams,
   serviceSearchTitle,
-  searchServices
+  searchServices,
+  searchServicePage,
+  servicePageNumber
 } from '../src/services/serviceSearchService.js';
 
-test('service search preserves URL aliases, first-page limit and select choices', () => {
+test('service search preserves URL aliases, requested page and select choices', () => {
   const filters = readServiceFilters(
     new URLSearchParams(
       'busca= logo &id_categoria=1&precoMin=20&precoMax=200&avaliacaoMin=4.5&ordenar=avaliacao&page=4'
@@ -15,13 +17,14 @@ test('service search preserves URL aliases, first-page limit and select choices'
   );
   assert.equal(
     serviceSearchParams(filters).toString(),
-    'q=logo&categoria=1&min=20&max=200&avaliacaoMin=4.5&ordenar=avaliacao&page=1&limit=24'
+    'q=logo&categoria=1&min=20&max=200&avaliacaoMin=4.5&ordenar=avaliacao&page=4&limit=24'
   );
   assert.equal(
     readServiceFilters(new URLSearchParams('categoria=unknown&ordenar=invalid')).categoria,
     ''
   );
   assert.equal(readServiceFilters(new URLSearchParams()).ordenar, 'recentes');
+  for (const invalid of ['Infinity', 'NaN', '-1', '1.5', '0', '']) assert.equal(servicePageNumber(invalid), 1);
 });
 test('service search preserves title fallback when original query is cleared', () => {
   const original = new URLSearchParams('q=logo&categoria=1');
@@ -52,6 +55,9 @@ test('service search uses GET, official envelope and API errors', async (t) => {
   });
   const filters = readServiceFilters(new URLSearchParams());
   assert.equal((await searchServices(filters))[0].idServico, 's');
+  const page = await searchServicePage(filters);
+  assert.equal(page.pagination.total, 99);
+  assert.equal(page.services[0].idServico, 's');
   t.mock.method(globalThis, 'fetch', async () =>
     Response.json({ mensagem: 'Erro ao buscar serviços.' }, { status: 500 })
   );

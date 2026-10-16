@@ -5,6 +5,7 @@ const { sucesso, erro } = require('../utils/apiResponse');
 const { mapContrato } = require('../utils/mapeadoresResposta');
 const { idMongoValido } = require('../utils/requisicaoUtils');
 const { contaPodeContratar } = require('../services/contaService');
+const { servicoPodeContratar } = require('../services/servicoService');
 const {
   estadoAcordo,
   vezNaNegociacao,
@@ -154,7 +155,7 @@ exports.criar = async (req, res) => {
     }
 
     const partes = [userId, servico.freelancer._id];
-    if (!(await Promise.all(partes.map(contaPodeContratar))).every(Boolean)) {
+    if (!(await Promise.all([...partes.map(contaPodeContratar), servicoPodeContratar(servico._id)])).every(Boolean)) {
       return erro(res, 409, MENSAGEM_SERVICO_INDISPONIVEL);
     }
 
@@ -181,9 +182,9 @@ exports.criar = async (req, res) => {
         : {})
     });
 
-    // a exclusão de conta marca o usuário antes de procurar contratos ativos. Conferir de novo depois
-    // de gravar fecha a corrida: se uma das partes entrou em exclusão, este pedido recém-criado é desfeito.
-    if (!(await Promise.all(partes.map(contaPodeContratar))).every(Boolean)) {
+    // Exclusão de conta e retirada de anúncio marcam o recurso antes de procurar contratos ativos.
+    // Se uma marca apareceu durante a gravação, este pedido recém-criado é desfeito antes de responder.
+    if (!(await Promise.all([...partes.map(contaPodeContratar), servicoPodeContratar(servico._id)])).every(Boolean)) {
       await Contrato.deleteOne({ _id: contrato._id });
       return erro(res, 409, MENSAGEM_SERVICO_INDISPONIVEL);
     }

@@ -103,7 +103,7 @@ test('ida e volta: dados, ObjectId, datas, contagens e índices voltam iguais; a
   assert.equal(resultado.preservadas.length, 2);
   for (const nome of resultado.preservadas) assert.ok(await db.listCollections({ name: nome }).hasNext(), `${nome} preservada`);
   assert.equal(await fsp.readFile(path.join(uploadsDestino, 'perfis', 'foto.png'), 'utf8'), 'imagem');
-  const sobras = (await cliente.db('admin').command({ listDatabases: 1, nameOnly: true })).databases.filter((d) => d.name.includes('_rtmp_'));
+  const sobras = (await cliente.db('admin').command({ listDatabases: 1, nameOnly: true })).databases.filter((d) => d.name.startsWith(`${BASE}_rtmp_`));
   assert.deepEqual(sobras, [], 'a base temporária vazia é removida no fim');
 });
 

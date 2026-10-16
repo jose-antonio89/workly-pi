@@ -9,6 +9,7 @@ import {
   serviceSummary,
   featuredServices,
   categoryServices,
+  categoryServicePage,
   serviceDetail,
   favoriteStatus,
   updateFavorite
@@ -79,6 +80,14 @@ test('featured/category/detail use exact official GET paths and envelope', async
     '/api/servicos/categoria/7',
     '/api/servicos/detail'
   ]);
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    assert.equal(url, '/api/servicos/categoria/7?page=2&limit=24');
+    return Response.json({ dados: [{ id_servico: 'restante' }], pagination: { page: 2, limit: 24, total: 25, totalPages: 2 } });
+  });
+  const page = await categoryServicePage('7', 2);
+  assert.equal(page.services[0].idServico, 'restante');
+  assert.equal(page.pagination.total, 25);
+  assert.equal(page.pagination.page, 2);
 });
 test('favorites retain official methods payload and response, expose API failure', async (t) => {
   storage(t);

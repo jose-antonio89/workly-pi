@@ -4,18 +4,26 @@ const Avaliacao = require('../models/Avaliacao');
 const Usuario = require('../models/Usuario');
 const Contrato = require('../models/Contrato');
 const Favorito = require('../models/Favorito');
+const { contaPodeContratar, MARCA_EXPIRADA_MS } = require('./contaService');
 
 // serviços retirados ficam fora do catálogo; documentos antigos sem o campo contam como publicados.
 const PUBLICADO = { removido: { $ne: true } };
+
+async function servicoPodeContratar(id) {
+  const servico = await Servico.findById(id).select('removido removendoDesde').lean();
+  if (!servico || servico.removido) return false;
+  return !servico.removendoDesde || Date.now() - new Date(servico.removendoDesde).getTime() >= MARCA_EXPIRADA_MS;
+}
 
 function escaparRegex(valor) {
   return String(valor).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function obterPaginacao(query = {}) {
-  const pagina = Math.max(Number(query.page || query.pagina || 1), 1);
+  const recebida = Number(query.page || query.pagina || 1);
+  const pagina = Number.isSafeInteger(recebida) && recebida > 0 ? recebida : 1;
   const limiteRecebido = Number(query.limit || query.limite || 24);
-  const limite = Math.min(Math.max(Number.isFinite(limiteRecebido) ? limiteRecebido : 24, 1), 60);
+  const limite = Math.min(Math.max(Number.isFinite(limiteRecebido) ? Math.floor(limiteRecebido) : 24, 1), 60);
   return { pagina, limite, skip: (pagina - 1) * limite };
 }
 
@@ -96,10 +104,10 @@ async function montarFiltro(query = {}) {
 
 async function consultarServicos(filtro, { ordenar, skip, limite }) {
   const ordenacoes = {
-    recentes: { createdAt: -1 },
-    antigos: { createdAt: 1 },
-    preco_asc: { preco: 1, createdAt: -1 },
-    preco_desc: { preco: -1, createdAt: -1 }
+    recentes: { createdAt: -1, _id: -1 },
+    antigos: { createdAt: 1, _id: 1 },
+    preco_asc: { preco: 1, createdAt: -1, _id: -1 },
+    preco_desc: { preco: -1, createdAt: -1, _id: -1 }
   };
 
   let consulta = popularServico(Servico.find(filtro))
@@ -110,34 +118,65 @@ async function consultarServicos(filtro, { ordenar, skip, limite }) {
   return anexarResumoAvaliacoes(await consulta);
 }
 
+// Calcula/faz o filtro e a ordenação no Mongo antes de paginar, sem carregar todo o catálogo na API.
+async function consultarAvaliados(filtro, { ordenar, avaliacaoMin = 0, skip, limite }) {
+  const ordenacoes = {
+    avaliacao: { avaliacaoMediaServico: -1, totalAvaliacoesServico: -1, createdAt: -1, _id: -1 },
+    recentes: { createdAt: -1, _id: -1 },
+    antigos: { createdAt: 1, _id: 1 },
+    preco_asc: { preco: 1, createdAt: -1, _id: -1 },
+    preco_desc: { preco: -1, createdAt: -1, _id: -1 }
+  };
+  const [resultado] = await Servico.aggregate([
+    { $match: filtro },
+    { $lookup: { from: Avaliacao.collection.name, let: { servicoId: '$_id' }, pipeline: [
+      { $match: { $expr: { $eq: ['$servico', '$$servicoId'] } } },
+      { $group: { _id: null, media: { $avg: '$notaServico' }, total: { $sum: 1 } } }
+    ], as: 'resumo' } },
+    { $set: {
+      avaliacaoMediaServico: { $round: [{ $ifNull: [{ $arrayElemAt: ['$resumo.media', 0] }, 0] }, 1] },
+      totalAvaliacoesServico: { $ifNull: [{ $arrayElemAt: ['$resumo.total', 0] }, 0] }
+    } },
+    ...(avaliacaoMin > 0 ? [{ $match: { avaliacaoMediaServico: { $gte: avaliacaoMin } } }] : []),
+    { $facet: {
+      itens: [{ $sort: ordenacoes[ordenar] || ordenacoes.recentes }, { $skip: skip }, { $limit: limite }, { $project: { resumo: 0 } }],
+      contagem: [{ $count: 'total' }]
+    } }
+  ]);
+  const servicos = await Servico.populate(resultado.itens, [
+    { path: 'categoria', select: 'legacyId nome slug' },
+    { path: 'freelancer', select: 'nome fotoPerfil avaliacaoMedia totalAvaliacoes tipoConta' }
+  ]);
+  return { servicos, total: resultado.contagem[0]?.total || 0 };
+}
+
 async function listar(query = {}) {
   const filtro = await montarFiltro(query);
   const { pagina, limite, skip } = obterPaginacao(query);
   const avaliacaoMin = Number(query.avaliacaoMin || query.avaliacao || 0);
   const filtrarAvaliacao = Number.isFinite(avaliacaoMin) && avaliacaoMin > 0;
 
+  if (filtrarAvaliacao || query.ordenar === 'avaliacao') {
+    const { servicos, total } = await consultarAvaliados(filtro, { ordenar: query.ordenar, avaliacaoMin: filtrarAvaliacao ? avaliacaoMin : 0, skip, limite });
+    return { servicos, pagination: { page: pagina, limit: limite, total, totalPages: Math.max(Math.ceil(total / limite), 1) } };
+  }
+
   const [servicos, totalDocumentos] = await Promise.all([
     consultarServicos(filtro, {
       ordenar: query.ordenar,
-      skip: filtrarAvaliacao ? 0 : skip,
-      limite: filtrarAvaliacao ? undefined : limite
+      skip,
+      limite
     }),
-    filtrarAvaliacao ? Promise.resolve(null) : Servico.countDocuments(filtro)
+    Servico.countDocuments(filtro)
   ]);
 
-  const filtrados = filtrarAvaliacao
-    ? servicos.filter((servico) => Number(servico.avaliacaoMediaServico || 0) >= avaliacaoMin)
-    : servicos;
-  const resultado = filtrarAvaliacao ? filtrados.slice(skip, skip + limite) : filtrados;
-  const total = filtrarAvaliacao ? filtrados.length : totalDocumentos;
-
   return {
-    servicos: resultado,
+    servicos,
     pagination: {
       page: pagina,
       limit: limite,
-      total,
-      totalPages: Math.max(Math.ceil(total / limite), 1)
+      total: totalDocumentos,
+      totalPages: Math.max(Math.ceil(totalDocumentos / limite), 1)
     }
   };
 }
@@ -148,6 +187,10 @@ async function buscarPorCategoria(categoriaId, query = {}) {
 
   const { pagina, limite, skip } = obterPaginacao(query);
   const filtro = { categoria: categoria._id, ...PUBLICADO };
+  if (query.ordenar === 'avaliacao') {
+    const { servicos, total } = await consultarAvaliados(filtro, { ordenar: query.ordenar, skip, limite });
+    return { servicos, pagination: { page: pagina, limit: limite, total, totalPages: Math.max(Math.ceil(total / limite), 1) } };
+  }
   const [servicos, total] = await Promise.all([
     consultarServicos(filtro, { ordenar: query.ordenar, skip, limite }),
     Servico.countDocuments(filtro)
@@ -198,6 +241,7 @@ async function criar({
   const categoria = await Categoria.findOne({ legacyId: Number(categoriaIdRecebido) });
   if (!categoria) return { erro: 'categoria_invalida' };
 
+  if (!(await contaPodeContratar(freelancerId))) return { erro: 'conta_indisponivel' };
   const servico = await Servico.create({
     nome: String(nome).trim(),
     descricao: String(descricao).trim(),
@@ -210,6 +254,11 @@ async function criar({
     freelancer: freelancerId
   });
 
+  // Uma exclusão iniciada depois da primeira leitura não pode deixar um anúncio público.
+  if (!(await contaPodeContratar(freelancerId))) {
+    await Servico.updateOne({ _id: servico._id }, { $set: { removido: true, removidoEm: new Date() } });
+    return { erro: 'conta_indisponivel' };
+  }
   return { servico };
 }
 
@@ -260,22 +309,30 @@ async function salvarAtualizacao(servico) {
 }
 
 async function remover(servico) {
-  const contratosAtivos = await Contrato.countDocuments({
-    servico: servico._id,
-    status: {
-      $in: ['pendente', 'proposta_pendente', 'proposta_aceita', 'em_andamento', 'entregue']
-    }
-  });
-  if (contratosAtivos > 0) return { contratosAtivos: true };
-
-  // exclusão lógica: contratos e avaliações continuam apontando para o serviço com nome e imagem preservados.
-  await Servico.updateOne({ _id: servico._id }, { $set: { removido: true, removidoEm: new Date() } });
-  await Favorito.deleteMany({ servico: servico._id });
-  return { contratosAtivos: false };
+  const marca = new Date();
+  const marcado = await Servico.findOneAndUpdate(
+    { _id: servico._id, ...PUBLICADO, $or: [{ removendoDesde: null }, { removendoDesde: { $lt: new Date(Date.now() - MARCA_EXPIRADA_MS) } }] },
+    { $set: { removendoDesde: marca } }
+  );
+  if (!marcado) return { indisponivel: true };
+  try {
+    const contratosAtivos = await Contrato.countDocuments({ servico: servico._id, status: { $in: Contrato.STATUS_ATIVOS } });
+    if (contratosAtivos > 0) return { contratosAtivos: true };
+    const atualizado = await Servico.updateOne(
+      { _id: servico._id, ...PUBLICADO, $and: [{ removendoDesde: marca }, { removendoDesde: { $gte: new Date(Date.now() - MARCA_EXPIRADA_MS) } }] },
+      { $set: { removido: true, removidoEm: new Date(), removendoDesde: null } }
+    );
+    if (!atualizado.modifiedCount) return { indisponivel: true };
+    await Favorito.deleteMany({ servico: servico._id });
+    return { contratosAtivos: false };
+  } finally {
+    await Servico.updateOne({ _id: servico._id, removendoDesde: marca }, { $set: { removendoDesde: null } });
+  }
 }
 
 module.exports = {
   PUBLICADO,
+  servicoPodeContratar,
   listar,
   buscarPorCategoria,
   buscarPorId,

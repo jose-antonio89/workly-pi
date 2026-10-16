@@ -3,12 +3,13 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import CatalogShell from '../components/catalog/CatalogShell';
 import ServiceCard from '../components/catalog/ServiceCard';
 import ServiceFilters from '../components/catalog/ServiceFilters';
+import Pagination from '../components/catalog/Pagination';
 import { LoadingState, StatePanel } from '../components/ui/Feedback';
 import Button from '../components/ui/Button';
 import { assignCovers } from '../components/home/offices';
 import {
   readServiceFilters,
-  searchServices,
+  searchServicePage,
   serviceSearchParams,
   serviceSearchTitle
 } from '../services/serviceSearchService';
@@ -20,6 +21,7 @@ export default function AllServicesPage() {
   const [filters, setFilters] = useState(() => readServiceFilters(original.current));
   const [request, setRequest] = useState(filters),
     [services, setServices] = useState(null),
+    [pagination, setPagination] = useState(null),
     [error, setError] = useState(false);
   const [title, setTitle] = useState(() => serviceSearchTitle(filters, original.current));
   const submittedSearch = useRef(location.search);
@@ -35,29 +37,28 @@ export default function AllServicesPage() {
   useEffect(() => {
     const controller = new AbortController();
     setServices(null);
+    setPagination(null);
     setError(false);
-    searchServices(request, { signal: controller.signal })
-      .then(setServices)
+    searchServicePage(request, { signal: controller.signal })
+      .then(({ services, pagination }) => { setServices(services); setPagination(pagination); })
       .catch((err) => {
         if (err.name !== 'AbortError') setError(true);
       });
     return () => controller.abort();
   }, [request]);
   // Chip removal and "clear" apply immediately; the URL is the source of truth for the title.
-  function apply(next) {
+  function apply(next, page = 1, replace = true) {
+    next = { ...next, page };
     setFilters(next);
     original.current = serviceSearchParams(next);
     setTitle(serviceSearchTitle(next, original.current));
     setRequest({ ...next });
     submittedSearch.current = `?${serviceSearchParams(next)}`;
-    navigate(`/todos-servicos${submittedSearch.current}`, { replace: true });
+    navigate(`/todos-servicos${submittedSearch.current}`, { replace });
   }
   function submit(event) {
     event.preventDefault();
-    setTitle(serviceSearchTitle(filters, original.current));
-    setRequest({ ...filters });
-    submittedSearch.current = `?${serviceSearchParams(filters)}`;
-    navigate(`/todos-servicos${submittedSearch.current}`, { replace: true });
+    apply(filters);
   }
   const covers = services ? assignCovers(services) : [];
 
@@ -82,7 +83,7 @@ export default function AllServicesPage() {
             onChange={setFilters}
             onSubmit={submit}
             onApply={apply}
-            count={services && !error ? services.length : undefined}
+            count={services && !error ? pagination?.total ?? services.length : undefined}
           />
         </div>
       </div>
@@ -124,6 +125,7 @@ export default function AllServicesPage() {
             </div>
           </>
         )}
+        {services && !error && <Pagination pagination={pagination} onPage={(page) => apply(request, page, false)} />}
       </div>
     </CatalogShell>
   );

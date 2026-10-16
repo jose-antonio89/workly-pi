@@ -54,7 +54,7 @@ test('profile services use official endpoints, bearer, partial fields and crop u
   assert.equal(JSON.parse(values.get('user')).doisFatores, true);
   await updateProfile({ doisFatores: false });
   await updateAccountType({ tipoConta: 'Contratante', areaAtuacao: '' });
-  await updatePassword({ senhaAtual: 'a', novaSenha: 'b', confirmarSenha: 'b' });
+  await updatePassword({ senhaAtual: 'a', novaSenha: 'senha-nova-valida', confirmarSenha: 'senha-nova-valida' });
   await uploadPhoto(new Blob(['qa'], { type: 'image/webp' }));
   await deleteAccount();
   assert.deepEqual(
@@ -76,7 +76,7 @@ test('profile services use official endpoints, bearer, partial fields and crop u
     Response.json({ mensagem: 'Senha atual incorreta.' }, { status: 401 })
   );
   await assert.rejects(
-    updatePassword({}),
+    updatePassword({ senhaAtual: 'senha-atual', novaSenha: 'senha-nova-valida', confirmarSenha: 'senha-nova-valida' }),
     (error) => error.status === 401 && error.message === 'Senha atual incorreta.'
   );
   assert.equal(values.get('token'), 'qa');

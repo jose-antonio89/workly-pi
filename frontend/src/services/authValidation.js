@@ -1,3 +1,5 @@
+import { newPasswordProblem } from './passwordValidation.js';
+
 export const areas = [
   'Design',
   'Programação',
@@ -33,9 +35,11 @@ export function validateField(name, value, { required = false, type = 'text', se
   if (required && !text) return 'Este campo é obrigatório';
   if (type === 'email' && text && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text))
     return 'Por favor, insira um email válido';
-  if (name === 'senha' && text && text.length < 8)
-    return 'A senha deve ter pelo menos 8 caracteres';
-  if (name === 'confirmar_senha' && text && senha.trim() && text !== senha.trim())
+  if (name === 'senha' && value) {
+    if (value.length < 8) return 'A senha deve ter pelo menos 8 caracteres';
+    return newPasswordProblem(value);
+  }
+  if (name === 'confirmar_senha' && value && senha && value !== senha)
     return 'As senhas não coincidem';
   return '';
 }

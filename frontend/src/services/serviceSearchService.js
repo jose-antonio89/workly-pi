@@ -1,9 +1,15 @@
 import { apiRequest } from './apiClient.js';
-import { categories, normalizeService } from './catalogService.js';
+import { categories, servicePagePayload } from './catalogService.js';
+
+export function servicePageNumber(value) {
+  const number = Number(value);
+  return Number.isSafeInteger(number) && number > 0 ? number : 1;
+}
 
 export function readServiceFilters(params) {
   const select = (value, choices) => (choices.includes(value) ? value : '');
   return {
+    page: servicePageNumber(params.get('page')),
     q: (params.get('q') || params.get('busca') || '').trim(),
     categoria: select(
       params.get('id_categoria') || params.get('id') || params.get('categoria') || '',
@@ -27,8 +33,7 @@ export function serviceSearchParams(filters) {
     const value = key === 'q' ? filters.q.trim() : filters[key];
     if (value) params.set(key, value);
   }
-  // The official screen always requests the first 24 results, without pagination controls.
-  params.set('page', '1');
+  params.set('page', String(servicePageNumber(filters.page)));
   params.set('limit', '24');
   return params;
 }
@@ -55,6 +60,9 @@ export function serviceSearchTitle(filters, originalParams) {
 }
 
 export async function searchServices(filters, options = {}) {
+  return (await searchServicePage(filters, options)).services;
+}
+export async function searchServicePage(filters, options = {}) {
   const response = await apiRequest(`/api/servicos?${serviceSearchParams(filters)}`, options);
-  return (response.dados || []).map(normalizeService);
+  return servicePagePayload(response);
 }

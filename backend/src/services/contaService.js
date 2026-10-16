@@ -104,8 +104,6 @@ async function concluirExclusao(usuarioId) {
   if (!usuario || !contaEncerrada(usuario)) return false;
 
   await cancelarContratosAtivosDe([usuario._id]);
-  if (usuario.removido) return true;
-
   const servicos = await Servico.find({ freelancer: usuario._id, removido: { $ne: true } }).select('_id').lean();
   const servicoIds = servicos.map((servico) => servico._id);
   if (servicoIds.length) {
@@ -116,6 +114,7 @@ async function concluirExclusao(usuarioId) {
     $or: [{ usuario: usuario._id }, { servico: { $in: todosServicos.map((servico) => servico._id) } }]
   });
   await anonimizarNotificacoes(usuario._id);
+  if (usuario.removido) return true;
 
   const foto = usuario.fotoPerfil;
   if (foto && foto.startsWith('/uploads/perfis/perfil_') && foto !== FOTO_PADRAO) {
@@ -209,8 +208,18 @@ async function recuperarExclusoesPendentes() {
   const encerradas = await Usuario.find({ $or: [{ removido: true }, { exclusaoConfirmadaEm: { $ne: null } }] })
     .select('_id')
     .lean();
-  const contratosCancelados = await cancelarContratosAtivosDe(encerradas.map((usuario) => usuario._id));
-  return { exclusoesConcluidas: pendentes.length, contratosCancelados };
+  // Também recolhe anúncios gravados por requisições antigas depois da anonimização.
+  let contratosCancelados = await cancelarContratosAtivosDe(encerradas.map((usuario) => usuario._id));
+  const jaConcluidas = new Set(pendentes.map(({ _id }) => String(_id)));
+  for (const { _id } of encerradas) if (!jaConcluidas.has(String(_id))) await concluirExclusao(_id);
+  contratosCancelados += await cancelarContratosAtivosDe(encerradas.map((usuario) => usuario._id));
+  // Recupera uma queda entre gravar contrato e conferir novamente o serviço retirado.
+  const retirados = await Servico.find({ removido: true }).select('_id').lean();
+  const canceladosDeRetirados = retirados.length ? await Contrato.updateMany(
+    { servico: { $in: retirados.map(({ _id }) => _id) }, status: { $in: Contrato.STATUS_ATIVOS } },
+    { $set: { status: 'cancelado' } }
+  ) : null;
+  return { exclusoesConcluidas: pendentes.length, contratosCancelados: contratosCancelados + (canceladosDeRetirados?.modifiedCount || 0) };
 }
 
 // usada pela criação de contrato: conta inexistente, encerrada ou em verificação de exclusão não contrata.

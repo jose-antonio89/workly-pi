@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { serviceFormPayload, saveService } from '../src/services/serviceEditorService.js';
+import { serviceFormPayload, saveService, removeService } from '../src/services/serviceEditorService.js';
 import { createGuides, editGuides } from '../src/services/serviceFormGuides.js';
 import { aliasDestination } from '../src/routes/routeDefinitions.js';
 test('service FormData preserves original raw fields and separate create/edit checkbox encodings', () => {
@@ -48,14 +48,18 @@ test('service editor posts/puts multipart with official error message and retain
   data.set('nome', 'QA');
   await saveService(data);
   await saveService(data, 's');
+  await removeService('s');
   assert.deepEqual(
     calls.map(([url, method]) => [url, method]),
     [
       ['/api/servicos', 'POST'],
-      ['/api/servicos/s', 'PUT']
+      ['/api/servicos/s', 'PUT'],
+      ['/api/servicos/s', 'DELETE']
     ]
   );
   assert.equal(calls[0][2], data);
+  t.mock.method(globalThis, 'fetch', async () => Response.json({ mensagem: 'Não é possível remover um serviço com contratos ativos.' }, { status: 400 }));
+  await assert.rejects(removeService('s'), (error) => error.status === 400 && /contratos ativos/.test(error.message));
   t.mock.method(globalThis, 'fetch', async () =>
     Response.json({ mensagem: 'Categoria inválida.' }, { status: 400 })
   );

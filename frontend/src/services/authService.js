@@ -1,4 +1,5 @@
 import { apiRequest } from './apiClient.js';
+export { newPasswordProblem } from './passwordValidation.js';
 
 // Reused selectively from the local migration; response aliases match login.js.
 export async function login({ email, senha }) {
@@ -62,15 +63,6 @@ export function takeResetToken(win = window) {
 }
 export function clearResetToken() {
   pendingResetToken = '';
-}
-
-// mirrors the server rule (8 to 128 characters); the server has the final say.
-export function newPasswordProblem(senha, confirmacao) {
-  if (!senha) return 'Informe a nova senha.';
-  if (senha.length < 8) return 'A nova senha deve ter pelo menos 8 caracteres.';
-  if (senha.length > 128) return 'A nova senha deve ter no máximo 128 caracteres.';
-  if (senha !== confirmacao) return 'A confirmação da senha não confere.';
-  return '';
 }
 
 export function obterToken() {

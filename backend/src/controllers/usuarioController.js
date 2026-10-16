@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const { motivoNovaSenhaInvalida } = require('../utils/senhaUtils');
 const Servico = require('../models/Servico');
 const Usuario = require('../models/Usuario');
 const Avaliacao = require('../models/Avaliacao');
@@ -670,13 +671,8 @@ exports.atualizarSenha = async (req, res) => {
       return erro(res, 400, 'Senhas inválidas.');
     }
 
-    if (novaSenha.length > 128) {
-      return erro(res, 400, 'A nova senha deve ter no máximo 128 caracteres.');
-    }
-
-    if (String(novaSenha).length < 8) {
-      return erro(res, 400, 'A nova senha deve ter pelo menos 8 caracteres.');
-    }
+    const motivoSenha = motivoNovaSenhaInvalida(novaSenha);
+    if (motivoSenha) return erro(res, 400, motivoSenha);
 
     if (String(novaSenha) !== String(confirmarSenha)) {
       return erro(res, 400, 'A confirmação da senha não confere.');
@@ -685,17 +681,30 @@ exports.atualizarSenha = async (req, res) => {
     const usuario = await Usuario.findById(req.user.id_usuario);
     if (!usuario) return erro(res, 404, 'Usuário não encontrado.');
 
+    const versao = Number(req.user.sv || 0);
+    if (Number(usuario.versaoSessao || 0) !== versao) {
+      return erro(res, 409, 'Suas credenciais foram atualizadas. Entre novamente antes de alterar a senha.');
+    }
     const senhaCorreta = await bcrypt.compare(String(senhaAtual), usuario.senha);
     if (!senhaCorreta) return erro(res, 401, 'Senha atual incorreta.');
 
-    usuario.senha = await bcrypt.hash(String(novaSenha), 10);
-    // revoga todas as sessões anteriores; quem trocou a senha recebe um token novo e continua conectado.
-    usuario.versaoSessao = Number(usuario.versaoSessao || 0) + 1;
-    await usuario.save();
+    const senha = await bcrypt.hash(novaSenha, 10);
+    const atualizado = await Usuario.findOneAndUpdate(
+      {
+        _id: usuario._id,
+        senha: usuario.senha,
+        removido: { $ne: true },
+        exclusaoConfirmadaEm: null,
+        ...(versao === 0 ? { $or: [{ versaoSessao: 0 }, { versaoSessao: { $exists: false } }] } : { versaoSessao: versao })
+      },
+      { $set: { senha }, $inc: { versaoSessao: 1 }, $unset: { redefinicaoSenha: 1 } },
+      { new: true }
+    );
+    if (!atualizado) return erro(res, 409, 'Suas credenciais foram atualizadas durante esta operação. Entre novamente.');
 
     return sucesso(res, 200, 'Senha atualizada com sucesso!', null, {
-      token: emitirToken(usuario),
-      user: mapUsuario(req, usuario)
+      token: emitirToken(atualizado),
+      user: mapUsuario(req, atualizado)
     });
   } catch (error) {
     console.error(error);
