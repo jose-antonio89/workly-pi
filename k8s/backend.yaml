@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workly-backend
+  labels:
+    app: workly-backend
+spec:
+  # Mantenha em 1: os uploads ficam no disco do pod, então réplicas não compartilhariam os arquivos.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: workly-backend
+  template:
+    metadata:
+      labels:
+        app: workly-backend
+    spec:
+      containers:
+        - name: workly-backend
+          image: workly-backend:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+            - name: MONGO_URI
+              value: mongodb://mongo:27017/workly
+            # Valor de exemplo para a demonstração local. Nunca coloque um segredo real neste arquivo.
+            - name: JWT_SECRET
+              value: change-me
+            # Origem liberada no CORS: o endereço do port-forward do frontend no navegador.
+            - name: FRONTEND_URL
+              value: http://localhost:8080
+            - name: AUTO_SEED
+              value: "false"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: workly-backend
+  labels:
+    app: workly-backend
+spec:
+  type: NodePort
+  selector:
+    app: workly-backend
+  ports:
+    - port: 3000
+      targetPort: 3000

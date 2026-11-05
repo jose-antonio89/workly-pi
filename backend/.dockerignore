@@ -7,3 +7,4 @@ coverage
 *.log
 uploads
 backups
+.git
