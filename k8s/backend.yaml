@@ -5,7 +5,6 @@ metadata:
   labels:
     app: workly-backend
 spec:
-  # Mantenha em 1: os uploads ficam no disco do pod, então réplicas não compartilhariam os arquivos.
   replicas: 1
   selector:
     matchLabels:
@@ -26,10 +25,8 @@ spec:
               value: "3000"
             - name: MONGO_URI
               value: mongodb://mongo:27017/workly
-            # Valor de exemplo para a demonstração local. Nunca coloque um segredo real neste arquivo.
             - name: JWT_SECRET
               value: change-me
-            # Origem liberada no CORS: o endereço do port-forward do frontend no navegador.
             - name: FRONTEND_URL
               value: http://localhost:8080
             - name: AUTO_SEED

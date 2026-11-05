@@ -1,5 +1,3 @@
-# Sem volume persistente: os dados somem quando o pod é recriado. Aceitável para a demonstração;
-# depois de um reinício, rode o seed novamente. Sem autenticação: o Service é apenas interno (ClusterIP).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -7,7 +5,6 @@ metadata:
   labels:
     app: mongo
 spec:
-  # Não escale: cada réplica teria o próprio banco, sem replica set entre elas.
   replicas: 1
   selector:
     matchLabels:
