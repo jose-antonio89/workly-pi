@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build-test:
-    # MongoDB 8.0 exige um kernel fora da faixa 6.19 a 7.0.13.
+    
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
